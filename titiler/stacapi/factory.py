@@ -28,6 +28,7 @@ from titiler.core.dependencies import (
 from titiler.core.factory import BaseTilerFactory, img_endpoint_params
 from titiler.core.models.mapbox import TileJSON
 from titiler.core.resources.enums import ImageType, OptionalHeader
+from titiler.core.resources.responses import XMLResponse
 from titiler.core.utils import render_image
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
@@ -117,6 +118,7 @@ class MosaicTilerFactory(BaseTilerFactory):
 
         self.register_tiles()
         self.register_tilejson()
+        self.register_wmts()
         if self.add_viewer:
             self.register_map()
 
@@ -236,6 +238,14 @@ class MosaicTilerFactory(BaseTilerFactory):
             if OptionalHeader.x_assets in self.optional_headers:
                 ids = [x["id"] for x in assets]
                 headers["X-Assets"] = ",".join(ids)
+
+            if (
+                OptionalHeader.server_timing in self.optional_headers
+                and image.metadata.get("timings")
+            ):
+                headers["Server-Timing"] = ", ".join(
+                    [f"{name};dur={time}" for (name, time) in image.metadata["timings"]]
+                )
 
             return Response(content, media_type=media_type, headers=headers)
 
@@ -406,103 +416,99 @@ class MosaicTilerFactory(BaseTilerFactory):
                 media_type="text/html",
             )
 
-    # def register_wmts(self):  # noqa: C901
-    #     """Add wmts endpoint."""
+    def register_wmts(self):  # noqa: C901
+        """Add wmts endpoint."""
 
-    #     @self.router.get(
-    #         "/{tileMatrixSetId}/WMTSCapabilities.xml",
-    #         response_class=XMLResponse,
-    #     )
-    #     def wmts(
-    #         request: Request,
-    #         tileMatrixSetId: Annotated[
-    #             Literal[tuple(self.supported_tms.list())],
-    #             Path(
-    #                 description="Identifier selecting one of the TileMatrixSetId supported"
-    #             ),
-    #         ],
-    #         search_query=Depends(self.path_dependency),
-    #         tile_format: Annotated[
-    #             ImageType,
-    #             Query(description="Output image type. Default is png."),
-    #         ] = ImageType.png,
-    #         tile_scale: Annotated[
-    #             int,
-    #             Query(
-    #                 gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
-    #             ),
-    #         ] = 1,
-    #         minzoom: Annotated[
-    #             Optional[int],
-    #             Query(description="Overwrite default minzoom."),
-    #         ] = None,
-    #         maxzoom: Annotated[
-    #             Optional[int],
-    #             Query(description="Overwrite default maxzoom."),
-    #         ] = None,
-    #     ):
-    #         """OGC WMTS endpoint."""
-    #         route_params = {
-    #             "z": "{TileMatrix}",
-    #             "x": "{TileCol}",
-    #             "y": "{TileRow}",
-    #             "scale": tile_scale,
-    #             "format": tile_format.value,
-    #             "tileMatrixSetId": tileMatrixSetId,
-    #         }
+        @self.router.get(
+            "/{tileMatrixSetId}/WMTSCapabilities.xml",
+            response_class=XMLResponse,
+        )
+        def wmts(
+            request: Request,
+            tileMatrixSetId: Annotated[
+                Literal[tuple(self.supported_tms.list())],
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported"
+                ),
+            ],
+            search_query=Depends(self.path_dependency),
+            tile_format: Annotated[
+                ImageType,
+                Query(description="Output image type. Default is png."),
+            ] = ImageType.png,
+            tile_scale: Annotated[
+                int,
+                Query(
+                    gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
+                ),
+            ] = 1,
+            minzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default minzoom."),
+            ] = None,
+            maxzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default maxzoom."),
+            ] = None,
+        ):
+            """OGC WMTS endpoint."""
+            route_params = {
+                "z": "{TileMatrix}",
+                "x": "{TileCol}",
+                "y": "{TileRow}",
+                "scale": tile_scale,
+                "format": tile_format.value,
+                "tileMatrixSetId": tileMatrixSetId,
+            }
 
-    #         tiles_url = self.url_for(request, "tile", **route_params)
+            tiles_url = self.url_for(request, "tile", **route_params)
 
-    #         qs_key_to_remove = [
-    #             "tilematrixsetid",
-    #             "tile_format",
-    #             "tile_scale",
-    #             "minzoom",
-    #             "maxzoom",
-    #             "service",
-    #             "request",
-    #         ]
-    #         qs = [
-    #             (key, value)
-    #             for (key, value) in request.query_params._list
-    #             if key.lower() not in qs_key_to_remove
-    #         ]
-    #         if qs:
-    #             tiles_url += f"?{urlencode(qs)}"
+            qs_key_to_remove = [
+                "tilematrixsetid",
+                "tile_format",
+                "tile_scale",
+                "minzoom",
+                "maxzoom",
+                "service",
+                "request",
+            ]
+            qs = [
+                (key, value)
+                for (key, value) in request.query_params._list
+                if key.lower() not in qs_key_to_remove
+            ]
+            if qs:
+                tiles_url += f"?{urlencode(qs)}"
 
-    #         tms = self.supported_tms.get(tileMatrixSetId)
-    #         minzoom = _first_value([minzoom, search_info.metadata.minzoom], tms.minzoom)
-    #         maxzoom = _first_value([maxzoom, search_info.metadata.maxzoom], tms.maxzoom)
-    #         bounds = _first_value(
-    #             [search_info.input_search.get("bbox"), search_info.metadata.bounds],
-    #             tms.bbox,
-    #         )
+            tms = self.supported_tms.get(tileMatrixSetId)
+            minzoom = minzoom if minzoom is not None else tms.minzoom
+            maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+            bounds = search_query.get("bbox") or tms.bbox
 
-    #         tileMatrix = []
-    #         for zoom in range(minzoom, maxzoom + 1):  # type: ignore
-    #             matrix = tms.matrix(zoom)
-    #             tm = f"""
-    #                     <TileMatrix>
-    #                         <ows:Identifier>{matrix.id}</ows:Identifier>
-    #                         <ScaleDenominator>{matrix.scaleDenominator}</ScaleDenominator>
-    #                         <TopLeftCorner>{matrix.pointOfOrigin[0]} {matrix.pointOfOrigin[1]}</TopLeftCorner>
-    #                         <TileWidth>{matrix.tileWidth}</TileWidth>
-    #                         <TileHeight>{matrix.tileHeight}</TileHeight>
-    #                         <MatrixWidth>{matrix.matrixWidth}</MatrixWidth>
-    #                         <MatrixHeight>{matrix.matrixHeight}</MatrixHeight>
-    #                     </TileMatrix>"""
-    #             tileMatrix.append(tm)
+            tileMatrix = []
+            for zoom in range(minzoom, maxzoom + 1):  # type: ignore
+                matrix = tms.matrix(zoom)
+                tm = f"""
+                        <TileMatrix>
+                            <ows:Identifier>{matrix.id}</ows:Identifier>
+                            <ScaleDenominator>{matrix.scaleDenominator}</ScaleDenominator>
+                            <TopLeftCorner>{matrix.pointOfOrigin[0]} {matrix.pointOfOrigin[1]}</TopLeftCorner>
+                            <TileWidth>{matrix.tileWidth}</TileWidth>
+                            <TileHeight>{matrix.tileHeight}</TileHeight>
+                            <MatrixWidth>{matrix.matrixWidth}</MatrixWidth>
+                            <MatrixHeight>{matrix.matrixHeight}</MatrixHeight>
+                        </TileMatrix>"""
+                tileMatrix.append(tm)
 
-    #         return self.templates.TemplateResponse(
-    #             "wmts.xml",
-    #             {
-    #                 "request": request,
-    #                 "title": search_info.metadata.name or search_id,
-    #                 "bounds": bounds,
-    #                 "tileMatrix": tileMatrix,
-    #                 "tms": tms,
-    #                 "layers": layers,
-    #                 "media_type": tile_format.mediatype,
-    #             },
-    #             media_type=MediaType.xml.value,
-    #         )
+            return self.templates.TemplateResponse(
+                "wmts.xml",
+                {
+                    "request": request,
+                    "title": "STAC API",
+                    "bounds": bounds,
+                    "tileMatrix": tileMatrix,
+                    "tms": tms,
+                    "media_type": tile_format.mediatype,
+                },
+                media_type="application/xml",
+            )

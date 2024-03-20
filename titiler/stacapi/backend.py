@@ -25,7 +25,7 @@ from rio_tiler.mosaic import mosaic_reader
 from rio_tiler.types import AssetInfo, BBox
 
 from titiler.stacapi.settings import CacheSettings, RetrySettings, STACAPISettings
-from titiler.stacapi.utils import retry
+from titiler.stacapi.utils import Timer, retry
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
@@ -258,12 +258,17 @@ class STACAPIBackend(BaseBackend):
         **kwargs: Any,
     ) -> Tuple[ImageData, List[str]]:
         """Get Tile from multiple observation."""
-        mosaic_assets = self.assets_for_tile(
-            tile_x,
-            tile_y,
-            tile_z,
-            search_query=search_query,
-        )
+        timings = []
+
+        with Timer() as t:
+            mosaic_assets = self.assets_for_tile(
+                tile_x,
+                tile_y,
+                tile_z,
+                search_query=search_query,
+            )
+
+        timings.append(("search", round(t.elapsed * 1000, 2)))
 
         if not mosaic_assets:
             raise NoAssetFoundError(
@@ -276,7 +281,14 @@ class STACAPIBackend(BaseBackend):
             with self.reader(item, tms=self.tms, **self.reader_options) as src_dst:
                 return src_dst.tile(x, y, z, **kwargs)
 
-        return mosaic_reader(mosaic_assets, _reader, tile_x, tile_y, tile_z, **kwargs)
+        with Timer() as t:
+            img, used_assets = mosaic_reader(
+                mosaic_assets, _reader, tile_x, tile_y, tile_z, **kwargs
+            )
+
+        timings.append(("mosaicking", round(t.elapsed * 1000, 2)))
+        img.metadata = {**img.metadata, "timings": timings}
+        return img, used_assets
 
     def point(
         self,
