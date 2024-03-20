@@ -109,7 +109,7 @@ def ItemIdParams(
     item_id: Annotated[str, Path(description="STAC Item Identifier")],
 ) -> pystac.Item:
     """STAC Item dependency."""
-    stac_url = request.state.stac_url
+    stac_url = request.app.state.stac_url
     return get_stac_item(stac_url, collection_id, item_id)
 
 

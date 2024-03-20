@@ -406,21 +406,22 @@ class MosaicTilerFactory(BaseTilerFactory):
                 media_type="text/html",
             )
 
-    # def _wmts_routes(self):  # noqa: C901
+    # def register_wmts(self):  # noqa: C901
     #     """Add wmts endpoint."""
 
-    #     @self.router.get("/WMTSCapabilities.xml", response_class=XMLResponse)
     #     @self.router.get(
     #         "/{tileMatrixSetId}/WMTSCapabilities.xml",
     #         response_class=XMLResponse,
     #     )
     #     def wmts(
     #         request: Request,
-    #         search_id=Depends(self.path_dependency),
     #         tileMatrixSetId: Annotated[
     #             Literal[tuple(self.supported_tms.list())],
-    #             f"Identifier selecting one of the TileMatrixSetId supported (default: '{self.default_tms}')",
-    #         ] = self.default_tms,
+    #             Path(
+    #                 description="Identifier selecting one of the TileMatrixSetId supported"
+    #             ),
+    #         ],
+    #         search_query=Depends(self.path_dependency),
     #         tile_format: Annotated[
     #             ImageType,
     #             Query(description="Output image type. Default is png."),
@@ -441,16 +442,6 @@ class MosaicTilerFactory(BaseTilerFactory):
     #         ] = None,
     #     ):
     #         """OGC WMTS endpoint."""
-    #         with request.app.state.dbpool.connection() as conn:
-    #             with conn.cursor(row_factory=class_row(model.Search)) as cursor:
-    #                 cursor.execute(
-    #                     "SELECT * FROM searches WHERE hash=%s;",
-    #                     (search_id,),
-    #                 )
-    #                 search_info = cursor.fetchone()
-    #                 if not search_info:
-    #                     raise MosaicNotFoundError(f"SearchId `{search_id}` not found")
-
     #         route_params = {
     #             "z": "{TileMatrix}",
     #             "x": "{TileCol}",
@@ -461,46 +452,6 @@ class MosaicTilerFactory(BaseTilerFactory):
     #         }
 
     #         tiles_url = self.url_for(request, "tile", **route_params)
-
-    #         # List of dependencies a `/tile` URL should validate
-    #         # Note: Those dependencies should only require Query() inputs
-    #         tile_dependencies = [
-    #             self.layer_dependency,
-    #             self.dataset_dependency,
-    #             self.pixel_selection_dependency,
-    #             self.tile_dependency,
-    #             self.process_dependency,
-    #             self.rescale_dependency,
-    #             self.colormap_dependency,
-    #             self.render_dependency,
-    #             self.pgstac_dependency,
-    #             self.reader_dependency,
-    #             self.backend_dependency,
-    #         ]
-
-    #         layers: List[Dict[str, Any]] = []
-    #         if search_info.metadata.defaults:
-    #             for name, values in search_info.metadata.defaults.items():
-    #                 query_string = urlencode(values, doseq=True)
-    #                 try:
-    #                     check_query_params(
-    #                         dependencies=tile_dependencies,
-    #                         query_params=QueryParams(query_string),
-    #                     )
-    #                 except Exception as e:
-    #                     warnings.warn(
-    #                         f"Cannot construct URL for layer `{name}`: {repr(e)}",
-    #                         UserWarning,
-    #                         stacklevel=2,
-    #                     )
-    #                     continue
-
-    #                 layers.append(
-    #                     {
-    #                         "name": name,
-    #                         "endpoint": tiles_url + f"?{query_string}",
-    #                     }
-    #                 )
 
     #         qs_key_to_remove = [
     #             "tilematrixsetid",
@@ -518,21 +469,6 @@ class MosaicTilerFactory(BaseTilerFactory):
     #         ]
     #         if qs:
     #             tiles_url += f"?{urlencode(qs)}"
-
-    #         # Checking if we can construct a valid tile URL
-    #         # 1. we use `check_query_params` to validate the query-parameter
-    #         # 2. if there is no layers (from mosaic metadata) we raise the caught error
-    #         # 3. if there no errors we then add a default `layer` to the layers stack
-    #         try:
-    #             check_query_params(
-    #                 dependencies=tile_dependencies,
-    #                 query_params=QueryParams(qs),
-    #             )
-    #         except Exception as e:
-    #             if not layers:
-    #                 raise e
-    #         else:
-    #             layers.append({"name": "default", "endpoint": tiles_url})
 
     #         tms = self.supported_tms.get(tileMatrixSetId)
     #         minzoom = _first_value([minzoom, search_info.metadata.minzoom], tms.minzoom)
