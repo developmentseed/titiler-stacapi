@@ -86,7 +86,7 @@ def OutputType(
 
 @cached(  # type: ignore
     TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
-    key=lambda collection, item: hashkey(collection, item),
+    key=lambda url, collection, item: hashkey(url, collection, item),
 )
 @retry(
     tries=retry_config.retry,
