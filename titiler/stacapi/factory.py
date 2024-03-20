@@ -1,0 +1,572 @@
+"""Custom MosaicTiler Factory for PgSTAC Mosaic Backend."""
+import os
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Literal, Optional, Type
+from urllib.parse import urlencode
+
+import jinja2
+import rasterio
+from cogeo_mosaic.backends import BaseBackend
+from fastapi import Depends, HTTPException, Path, Query
+from fastapi.dependencies.utils import get_dependant, request_params_to_args
+from pydantic import conint
+from rio_tiler.constants import MAX_THREADS
+from rio_tiler.mosaic.methods.base import MosaicMethodBase
+from starlette.datastructures import QueryParams
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, Response
+from starlette.routing import compile_path, replace_params
+from starlette.templating import Jinja2Templates
+from typing_extensions import Annotated
+
+from titiler.core.dependencies import (
+    AssetsBidxExprParams,
+    ColorFormulaParams,
+    DefaultDependency,
+    TileParams,
+)
+from titiler.core.factory import BaseTilerFactory, img_endpoint_params
+from titiler.core.models.mapbox import TileJSON
+from titiler.core.resources.enums import ImageType, OptionalHeader
+from titiler.core.utils import render_image
+from titiler.mosaic.factory import PixelSelectionParams
+from titiler.stacapi.backend import STACAPIBackend
+
+MOSAIC_THREADS = int(os.getenv("MOSAIC_CONCURRENCY", MAX_THREADS))
+MOSAIC_STRICT_ZOOM = str(os.getenv("MOSAIC_STRICT_ZOOM", False)).lower() in [
+    "true",
+    "yes",
+]
+
+
+def _first_value(values: List[Any], default: Any = None):
+    """Return the first not None value."""
+    return next(filter(lambda x: x is not None, values), default)
+
+
+jinja2_env = jinja2.Environment(
+    loader=jinja2.ChoiceLoader(
+        [
+            jinja2.PackageLoader(__package__, "templates"),
+            jinja2.PackageLoader("titiler.core", "templates"),
+        ]
+    ),
+)
+DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
+
+
+def check_query_params(
+    *, dependencies: List[Callable], query_params: QueryParams
+) -> None:
+    """Check QueryParams for Query dependency.
+
+    1. `get_dependant` is used to get the query-parameters required by the `callable`
+    2. we use `request_params_to_args` to construct arguments needed to call the `callable`
+    3. we call the `callable` and catch any errors
+
+    Important: We assume the `callable` in not a co-routine
+
+    """
+    for dependency in dependencies:
+        dep = get_dependant(path="", call=dependency)
+        if dep.query_params:
+            # call the dependency with the query-parameters values
+            query_values, _ = request_params_to_args(dep.query_params, query_params)
+            _ = dependency(**query_values)
+
+    return
+
+
+@dataclass
+class MosaicTilerFactory(BaseTilerFactory):
+    """Custom MosaicTiler for STACAPI Mosaic Backend."""
+
+    path_dependency: Callable[..., Dict]
+
+    reader: Type[BaseBackend] = STACAPIBackend
+    layer_dependency: Type[DefaultDependency] = AssetsBidxExprParams
+
+    # Tile/Tilejson/WMTS Dependencies
+    tile_dependency: Type[DefaultDependency] = TileParams
+
+    pixel_selection_dependency: Callable[..., MosaicMethodBase] = PixelSelectionParams
+
+    backend_dependency: Type[DefaultDependency] = DefaultDependency
+
+    add_viewer: bool = False
+
+    templates: Jinja2Templates = DEFAULT_TEMPLATES
+
+    def get_base_url(self, request: Request) -> str:
+        """return endpoints base url."""
+        base_url = str(request.base_url).rstrip("/")
+        if self.router_prefix:
+            prefix = self.router_prefix.lstrip("/")
+            # If we have prefix with custom path param we check and replace them with
+            # the path params provided
+            if "{" in prefix:
+                _, path_format, param_convertors = compile_path(prefix)
+                prefix, _ = replace_params(
+                    path_format, param_convertors, request.path_params.copy()
+                )
+            base_url += prefix
+        return base_url
+
+    def register_routes(self) -> None:
+        """register endpoints."""
+
+        self.register_tiles()
+        self.register_tilejson()
+        if self.add_viewer:
+            self.register_map()
+
+    def register_tiles(self) -> None:
+        """register tiles routes."""
+
+        @self.router.get("/tiles/{tileMatrixSetId}/{z}/{x}/{y}", **img_endpoint_params)
+        @self.router.get(
+            "/tiles/{tileMatrixSetId}/{z}/{x}/{y}.{format}",
+            **img_endpoint_params,
+        )
+        @self.router.get(
+            "/tiles/{tileMatrixSetId}/{z}/{x}/{y}@{scale}x",
+            **img_endpoint_params,
+        )
+        @self.router.get(
+            "/tiles/{tileMatrixSetId}/{z}/{x}/{y}@{scale}x.{format}",
+            **img_endpoint_params,
+        )
+        def tile(
+            request: Request,
+            tileMatrixSetId: Annotated[  # type: ignore
+                Literal[tuple(self.supported_tms.list())],
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported"
+                ),
+            ],
+            z: Annotated[
+                int,
+                Path(
+                    description="Identifier (Z) selecting one of the scales defined in the TileMatrixSet and representing the scaleDenominator the tile.",
+                ),
+            ],
+            x: Annotated[
+                int,
+                Path(
+                    description="Column (X) index of the tile on the selected TileMatrix. It cannot exceed the MatrixHeight-1 for the selected TileMatrix.",
+                ),
+            ],
+            y: Annotated[
+                int,
+                Path(
+                    description="Row (Y) index of the tile on the selected TileMatrix. It cannot exceed the MatrixWidth-1 for the selected TileMatrix.",
+                ),
+            ],
+            search_query=Depends(self.path_dependency),
+            scale: Annotated[  # type: ignore
+                Optional[conint(gt=0, le=4)],
+                "Tile size scale. 1=256x256, 2=512x512...",
+            ] = None,
+            format: Annotated[
+                Optional[ImageType],
+                "Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
+            ] = None,
+            layer_params=Depends(self.layer_dependency),
+            dataset_params=Depends(self.dataset_dependency),
+            pixel_selection=Depends(self.pixel_selection_dependency),
+            tile_params=Depends(self.tile_dependency),
+            post_process=Depends(self.process_dependency),
+            rescale=Depends(self.rescale_dependency),
+            color_formula=Depends(ColorFormulaParams),
+            colormap=Depends(self.colormap_dependency),
+            render_params=Depends(self.render_dependency),
+            backend_params=Depends(self.backend_dependency),
+            reader_params=Depends(self.reader_dependency),
+            env=Depends(self.environment_dependency),
+        ):
+            """Create map tile."""
+            scale = scale or 1
+
+            tms = self.supported_tms.get(tileMatrixSetId)
+            with rasterio.Env(**env):
+                with self.reader(
+                    request.app.state.stac_url,
+                    tms=tms,
+                    reader_options={**reader_params},
+                    **backend_params,
+                ) as src_dst:
+                    if MOSAIC_STRICT_ZOOM and (
+                        tile.z < src_dst.minzoom or tile.z > src_dst.maxzoom
+                    ):
+                        raise HTTPException(
+                            400,
+                            f"Invalid ZOOM level {tile.z}. Should be between {src_dst.minzoom} and {src_dst.maxzoom}",
+                        )
+
+                    image, assets = src_dst.tile(
+                        x,
+                        y,
+                        z,
+                        search_query=search_query,
+                        tilesize=scale * 256,
+                        pixel_selection=pixel_selection,
+                        threads=MOSAIC_THREADS,
+                        **tile_params,
+                        **layer_params,
+                        **dataset_params,
+                    )
+
+            if post_process:
+                image = post_process(image)
+
+            if rescale:
+                image.rescale(rescale)
+
+            if color_formula:
+                image.apply_color_formula(color_formula)
+
+            content, media_type = render_image(
+                image,
+                output_format=format,
+                colormap=colormap,
+                **render_params,
+            )
+
+            headers: Dict[str, str] = {}
+            if OptionalHeader.x_assets in self.optional_headers:
+                ids = [x["id"] for x in assets]
+                headers["X-Assets"] = ",".join(ids)
+
+            return Response(content, media_type=media_type, headers=headers)
+
+    def register_tilejson(self) -> None:
+        """register tiles routes."""
+
+        @self.router.get(
+            "/{tileMatrixSetId}/tilejson.json",
+            response_model=TileJSON,
+            responses={200: {"description": "Return a tilejson"}},
+            response_model_exclude_none=True,
+        )
+        def tilejson(
+            request: Request,
+            tileMatrixSetId: Annotated[  # type: ignore
+                Literal[tuple(self.supported_tms.list())],
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported"
+                ),
+            ],
+            search_query=Depends(self.path_dependency),
+            tile_format: Annotated[
+                Optional[ImageType],
+                Query(
+                    description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
+                ),
+            ] = None,
+            tile_scale: Annotated[
+                Optional[int],
+                Query(
+                    gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
+                ),
+            ] = None,
+            minzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default minzoom."),
+            ] = None,
+            maxzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default maxzoom."),
+            ] = None,
+            layer_params=Depends(self.layer_dependency),
+            dataset_params=Depends(self.dataset_dependency),
+            pixel_selection=Depends(self.pixel_selection_dependency),
+            tile_params=Depends(self.tile_dependency),
+            post_process=Depends(self.process_dependency),
+            rescale=Depends(self.rescale_dependency),
+            color_formula=Depends(ColorFormulaParams),
+            colormap=Depends(self.colormap_dependency),
+            render_params=Depends(self.render_dependency),
+            backend_params=Depends(self.backend_dependency),
+            reader_params=Depends(self.reader_dependency),
+        ):
+            """Return TileJSON document."""
+            route_params = {
+                "z": "{z}",
+                "x": "{x}",
+                "y": "{y}",
+                "tileMatrixSetId": tileMatrixSetId,
+            }
+
+            if tile_scale:
+                route_params["scale"] = tile_scale
+
+            if tile_format:
+                route_params["format"] = tile_format.value
+
+            tiles_url = self.url_for(request, "tile", **route_params)
+
+            qs_key_to_remove = [
+                "tilematrixsetid",
+                "tile_format",
+                "tile_scale",
+                "minzoom",
+                "maxzoom",
+            ]
+            qs = [
+                (key, value)
+                for (key, value) in request.query_params._list
+                if key.lower() not in qs_key_to_remove
+            ]
+            if qs:
+                tiles_url += f"?{urlencode(qs)}"
+
+            tms = self.supported_tms.get(tileMatrixSetId)
+            minzoom = minzoom if minzoom is not None else tms.minzoom
+            maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+            bounds = search_query.get("bbox") or tms.bbox
+
+            return {
+                "bounds": bounds,
+                "minzoom": minzoom,
+                "maxzoom": maxzoom,
+                "name": "STACAPI",
+                "tiles": [tiles_url],
+            }
+
+    def register_map(self):  # noqa: C901
+        """Register /map endpoint."""
+
+        @self.router.get("/{tileMatrixSetId}/map", response_class=HTMLResponse)
+        def map_viewer(
+            request: Request,
+            tileMatrixSetId: Annotated[
+                Literal[tuple(self.supported_tms.list())],
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported"
+                ),
+            ],
+            search_query=Depends(self.path_dependency),
+            tile_format: Annotated[
+                Optional[ImageType],
+                Query(
+                    description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
+                ),
+            ] = None,
+            tile_scale: Annotated[
+                Optional[int],
+                Query(
+                    gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
+                ),
+            ] = None,
+            minzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default minzoom."),
+            ] = None,
+            maxzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default maxzoom."),
+            ] = None,
+            layer_params=Depends(self.layer_dependency),
+            dataset_params=Depends(self.dataset_dependency),
+            pixel_selection=Depends(self.pixel_selection_dependency),
+            tile_params=Depends(self.tile_dependency),
+            post_process=Depends(self.process_dependency),
+            rescale=Depends(self.rescale_dependency),
+            color_formula=Depends(ColorFormulaParams),
+            colormap=Depends(self.colormap_dependency),
+            render_params=Depends(self.render_dependency),
+            backend_params=Depends(self.backend_dependency),
+            reader_params=Depends(self.reader_dependency),
+            env=Depends(self.environment_dependency),
+        ):
+            """Return a simple map viewer."""
+            tilejson_url = self.url_for(
+                request,
+                "tilejson",
+                tileMatrixSetId=tileMatrixSetId,
+            )
+            if request.query_params._list:
+                tilejson_url += f"?{urlencode(request.query_params._list)}"
+
+            tms = self.supported_tms.get(tileMatrixSetId)
+
+            return self.templates.TemplateResponse(
+                name="map.html",
+                context={
+                    "request": request,
+                    "tilejson_endpoint": tilejson_url,
+                    "tms": tms,
+                    "resolutions": [matrix.cellSize for matrix in tms],
+                    "template": {
+                        "api_root": self.get_base_url(request),
+                        "params": request.query_params,
+                        "title": "Map",
+                    },
+                },
+                media_type="text/html",
+            )
+
+    # def _wmts_routes(self):  # noqa: C901
+    #     """Add wmts endpoint."""
+
+    #     @self.router.get("/WMTSCapabilities.xml", response_class=XMLResponse)
+    #     @self.router.get(
+    #         "/{tileMatrixSetId}/WMTSCapabilities.xml",
+    #         response_class=XMLResponse,
+    #     )
+    #     def wmts(
+    #         request: Request,
+    #         search_id=Depends(self.path_dependency),
+    #         tileMatrixSetId: Annotated[
+    #             Literal[tuple(self.supported_tms.list())],
+    #             f"Identifier selecting one of the TileMatrixSetId supported (default: '{self.default_tms}')",
+    #         ] = self.default_tms,
+    #         tile_format: Annotated[
+    #             ImageType,
+    #             Query(description="Output image type. Default is png."),
+    #         ] = ImageType.png,
+    #         tile_scale: Annotated[
+    #             int,
+    #             Query(
+    #                 gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
+    #             ),
+    #         ] = 1,
+    #         minzoom: Annotated[
+    #             Optional[int],
+    #             Query(description="Overwrite default minzoom."),
+    #         ] = None,
+    #         maxzoom: Annotated[
+    #             Optional[int],
+    #             Query(description="Overwrite default maxzoom."),
+    #         ] = None,
+    #     ):
+    #         """OGC WMTS endpoint."""
+    #         with request.app.state.dbpool.connection() as conn:
+    #             with conn.cursor(row_factory=class_row(model.Search)) as cursor:
+    #                 cursor.execute(
+    #                     "SELECT * FROM searches WHERE hash=%s;",
+    #                     (search_id,),
+    #                 )
+    #                 search_info = cursor.fetchone()
+    #                 if not search_info:
+    #                     raise MosaicNotFoundError(f"SearchId `{search_id}` not found")
+
+    #         route_params = {
+    #             "z": "{TileMatrix}",
+    #             "x": "{TileCol}",
+    #             "y": "{TileRow}",
+    #             "scale": tile_scale,
+    #             "format": tile_format.value,
+    #             "tileMatrixSetId": tileMatrixSetId,
+    #         }
+
+    #         tiles_url = self.url_for(request, "tile", **route_params)
+
+    #         # List of dependencies a `/tile` URL should validate
+    #         # Note: Those dependencies should only require Query() inputs
+    #         tile_dependencies = [
+    #             self.layer_dependency,
+    #             self.dataset_dependency,
+    #             self.pixel_selection_dependency,
+    #             self.tile_dependency,
+    #             self.process_dependency,
+    #             self.rescale_dependency,
+    #             self.colormap_dependency,
+    #             self.render_dependency,
+    #             self.pgstac_dependency,
+    #             self.reader_dependency,
+    #             self.backend_dependency,
+    #         ]
+
+    #         layers: List[Dict[str, Any]] = []
+    #         if search_info.metadata.defaults:
+    #             for name, values in search_info.metadata.defaults.items():
+    #                 query_string = urlencode(values, doseq=True)
+    #                 try:
+    #                     check_query_params(
+    #                         dependencies=tile_dependencies,
+    #                         query_params=QueryParams(query_string),
+    #                     )
+    #                 except Exception as e:
+    #                     warnings.warn(
+    #                         f"Cannot construct URL for layer `{name}`: {repr(e)}",
+    #                         UserWarning,
+    #                         stacklevel=2,
+    #                     )
+    #                     continue
+
+    #                 layers.append(
+    #                     {
+    #                         "name": name,
+    #                         "endpoint": tiles_url + f"?{query_string}",
+    #                     }
+    #                 )
+
+    #         qs_key_to_remove = [
+    #             "tilematrixsetid",
+    #             "tile_format",
+    #             "tile_scale",
+    #             "minzoom",
+    #             "maxzoom",
+    #             "service",
+    #             "request",
+    #         ]
+    #         qs = [
+    #             (key, value)
+    #             for (key, value) in request.query_params._list
+    #             if key.lower() not in qs_key_to_remove
+    #         ]
+    #         if qs:
+    #             tiles_url += f"?{urlencode(qs)}"
+
+    #         # Checking if we can construct a valid tile URL
+    #         # 1. we use `check_query_params` to validate the query-parameter
+    #         # 2. if there is no layers (from mosaic metadata) we raise the caught error
+    #         # 3. if there no errors we then add a default `layer` to the layers stack
+    #         try:
+    #             check_query_params(
+    #                 dependencies=tile_dependencies,
+    #                 query_params=QueryParams(qs),
+    #             )
+    #         except Exception as e:
+    #             if not layers:
+    #                 raise e
+    #         else:
+    #             layers.append({"name": "default", "endpoint": tiles_url})
+
+    #         tms = self.supported_tms.get(tileMatrixSetId)
+    #         minzoom = _first_value([minzoom, search_info.metadata.minzoom], tms.minzoom)
+    #         maxzoom = _first_value([maxzoom, search_info.metadata.maxzoom], tms.maxzoom)
+    #         bounds = _first_value(
+    #             [search_info.input_search.get("bbox"), search_info.metadata.bounds],
+    #             tms.bbox,
+    #         )
+
+    #         tileMatrix = []
+    #         for zoom in range(minzoom, maxzoom + 1):  # type: ignore
+    #             matrix = tms.matrix(zoom)
+    #             tm = f"""
+    #                     <TileMatrix>
+    #                         <ows:Identifier>{matrix.id}</ows:Identifier>
+    #                         <ScaleDenominator>{matrix.scaleDenominator}</ScaleDenominator>
+    #                         <TopLeftCorner>{matrix.pointOfOrigin[0]} {matrix.pointOfOrigin[1]}</TopLeftCorner>
+    #                         <TileWidth>{matrix.tileWidth}</TileWidth>
+    #                         <TileHeight>{matrix.tileHeight}</TileHeight>
+    #                         <MatrixWidth>{matrix.matrixWidth}</MatrixWidth>
+    #                         <MatrixHeight>{matrix.matrixHeight}</MatrixHeight>
+    #                     </TileMatrix>"""
+    #             tileMatrix.append(tm)
+
+    #         return self.templates.TemplateResponse(
+    #             "wmts.xml",
+    #             {
+    #                 "request": request,
+    #                 "title": search_info.metadata.name or search_id,
+    #                 "bounds": bounds,
+    #                 "tileMatrix": tileMatrix,
+    #                 "tms": tms,
+    #                 "layers": layers,
+    #                 "media_type": tile_format.mediatype,
+    #             },
+    #             media_type=MediaType.xml.value,
+    #         )

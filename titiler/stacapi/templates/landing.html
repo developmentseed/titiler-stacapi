@@ -1,0 +1,36 @@
+{% include "header.html" %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb bg-light">
+    {% for crumb in crumbs %}
+      {% if not loop.last %}
+    <li class="breadcrumb-item"><a href="{{ crumb.url }}/">{{ crumb.part }}</a></li>
+      {% else %}<li class="breadcrumb-item active" aria-current="page">{{ crumb.part }}</li>
+      {% endif %}
+    {% endfor %}
+
+    <li class="ml-auto json-link"><a target="_blank" href="{{ url }}?f=json">JSON</a></li>
+  </ol>
+</nav>
+
+<h1>{{ response.title }}</h1>
+<pre style=" font-size:10px; text-align: center;" >
+  __  .__  __  .__.__                           _________________________  _________     _____ __________.___
+_/  |_|__|/  |_|__|  |   ___________           /   _____/\__    ___/  _  \ \_   ___ \   /  _  \\______   \   |
+\   __\  \   __\  |  | _/ __ \_  __ \  ______  \_____  \   |    | /  /_\  \/    \  \/  /  /_\  \|     ___/   |
+ |  | |  ||  | |  |  |_\  ___/|  | \/ /_____/  /        \  |    |/    |    \     \____/    |    \    |   |   |
+ |__| |__||__| |__|____/\___  >__|            /_______  /  |____|\____|__  /\______  /\____|__  /____|   |___|
+                            \/                        \/                 \/        \/         \/
+</pre>
+<p>
+  {{ response.description }}
+</p>
+
+<h2>Links</h2>
+<ul>
+{% for link in response.links %}
+  <li> <a href="{{ link.href }}">{{ link.title }}</a></li>
+{% endfor %}
+</ul>
+
+{% include "footer.html" %}
