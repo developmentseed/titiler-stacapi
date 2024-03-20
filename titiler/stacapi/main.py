@@ -85,6 +85,9 @@ if settings.debug:
 
 ###############################################################################
 # STAC COLLECTION Endpoints
+# Notes:
+# - The `path_dependency` is set to `STACApiParams` which define `{collection_id}`
+# `Path` dependency and other Query parameters used to construct STAC API Search request.
 collection = MosaicTilerFactory(
     path_dependency=STACApiParams,
     optional_headers=optional_headers,
@@ -97,6 +100,10 @@ app.include_router(
 
 ###############################################################################
 # STAC Item Endpoints
+# Notes: The `MultiBaseTilerFactory` from titiler.core.factory expect a `URL` as query parameter
+# but in this project we use a custom `path_dependency=ItemIdParams`, which define `{collection_id}` and `{item_id}` as
+# `Path` dependencies. Then the `ItemIdParams` dependency will fetch the STAC API endpoint to get the STAC Item. The Item
+# will then be used in our custom `STACReader`.
 stac = MultiBaseTilerFactory(
     reader=STACReader,
     path_dependency=ItemIdParams,

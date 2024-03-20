@@ -108,7 +108,7 @@ def ItemIdParams(
     ],
     item_id: Annotated[str, Path(description="STAC Item Identifier")],
 ) -> pystac.Item:
-    """STAC Item dependency."""
+    """STAC Item dependency for the MultiBaseTilerFactory."""
     stac_url = request.app.state.stac_url
     return get_stac_item(stac_url, collection_id, item_id)
 
@@ -145,7 +145,7 @@ def STACApiParams(
         Optional[int], Query(description="Limit the number of items (default: 100)")
     ] = None,
 ) -> Dict:
-    """STAC API Search Parameter"""
+    """Dependency to construct STAC API Search Query."""
     return {
         "collections": [collection_id],
         "ids": ids.split(",") if ids else None,

@@ -84,10 +84,17 @@ class MosaicTilerFactory(BaseTilerFactory):
 
     path_dependency: Callable[..., Dict]
 
+    # In this factory, `reader` should be a Mosaic Backend
+    # https://developmentseed.org/cogeo-mosaic/advanced/backends/
     reader: Type[BaseBackend] = STACAPIBackend
+
+    # Because the endpoints should work with STAC Items,
+    # the `layer_dependency` define which query parameters are mandatory/optional to `display` images
+    # Defaults to `titiler.core.dependencies.AssetsBidxExprParams`, `assets=` or `expression=` is required
     layer_dependency: Type[DefaultDependency] = AssetsBidxExprParams
 
-    # Tile/Tilejson/WMTS Dependencies
+    # The `tile_dependency` define options like `buffer` or `padding`
+    # used in Tile/Tilejson/WMTS Dependencies
     tile_dependency: Type[DefaultDependency] = TileParams
 
     pixel_selection_dependency: Callable[..., MosaicMethodBase] = PixelSelectionParams
