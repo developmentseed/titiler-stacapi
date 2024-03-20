@@ -1,4 +1,4 @@
-"""TiTiler.PgSTAC custom Mosaic Backend and Custom STACReader."""
+"""titiler-stacapi custom Mosaic Backend and Custom STACReader."""
 
 import json
 from typing import Any, Dict, List, Optional, Tuple, Type

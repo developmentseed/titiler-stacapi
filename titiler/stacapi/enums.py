@@ -1,4 +1,4 @@
-"""ogcapi-pydantic enums."""
+"""titiler-stacapi enums."""
 
 from enum import Enum
 
