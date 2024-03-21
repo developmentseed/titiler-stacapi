@@ -1,4 +1,4 @@
-name: Test and Deploy
+name: CI
 
 # Triggers on pushes to main, dev and tags.
 on:
@@ -49,3 +49,12 @@ jobs:
 
       - name: Run tests
         run: python -m pytest --cov titiler.stacapi --cov-report term-missing -s -vv
+
+      - name: Upload Results
+        if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: ${{ matrix.python-version }}
+          fail_ci_if_error: false
