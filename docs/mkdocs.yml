@@ -1,0 +1,63 @@
+site_name: TiTiler.STACApi
+site_description: Connect titiler to STAC APIs.
+
+docs_dir: 'src'
+site_dir: 'build'
+
+repo_name: developmentseed/titiler-stacapi
+repo_url: https://github.com/developmentseed/titiler-stacapi
+edit_uri: blob/main/docs/
+site_url: https://developmentseed.org/titiler-stacapi/
+
+extra:
+  social:
+    - icon: "fontawesome/brands/github"
+      link: "https://github.com/developmentseed"
+
+nav:
+  - Home: index.md
+  - Endpoints:
+    - endpoints/index.md
+    - Collections: endpoints/collections_endpoints.md
+    - Items: endpoints/items_endpoints.md
+    - TileMatrixSet: endpoints/tms_endpoints.md
+  - Development - Contributing: contributing.md
+  - Release notes: release-notes.md
+
+plugins:
+  - search
+
+theme:
+  name: material
+  favicon: img/favicon.ico
+  features:
+    - navigation.indexes
+
+
+# https://github.com/kylebarron/cogeo-mosaic/blob/mkdocs/mkdocs.yml#L50-L75
+markdown_extensions:
+  - admonition
+  - attr_list
+  - codehilite:
+      guess_lang: false
+  - def_list
+  - footnotes
+  - pymdownx.arithmatex
+  - pymdownx.betterem
+  - pymdownx.caret:
+      insert: false
+  - pymdownx.details
+  - pymdownx.emoji
+  - pymdownx.escapeall:
+      hardbreak: true
+      nbsp: true
+  - pymdownx.magiclink:
+      hide_protocol: true
+      repo_url_shortener: true
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - toc:
+      permalink: true
