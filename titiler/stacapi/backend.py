@@ -24,12 +24,11 @@ from rio_tiler.models import ImageData
 from rio_tiler.mosaic import mosaic_reader
 from rio_tiler.types import AssetInfo, BBox
 
-from titiler.stacapi.settings import CacheSettings, RetrySettings, STACAPISettings
+from titiler.stacapi.settings import CacheSettings, RetrySettings
 from titiler.stacapi.utils import Timer, retry
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
-stacapi_config = STACAPISettings()
 
 
 @attr.s
