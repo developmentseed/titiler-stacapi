@@ -24,8 +24,8 @@ classifiers = [
 ]
 dependencies = [
     "orjson",
-    "titiler.core>=0.17.0,<0.18",
-    "titiler.mosaic>=0.17.0,<0.18",
+    "titiler.core>=0.17.0,<0.19",
+    "titiler.mosaic>=0.17.0,<0.19",
     "pystac-client",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",

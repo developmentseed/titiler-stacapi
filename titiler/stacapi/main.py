@@ -182,6 +182,12 @@ def landing(
                 rel="service-doc",
             ),
             models.Link(
+                title="STAC-API endpoint (external link)",
+                href=request.app.state.stac_url,
+                type=MediaType.json,
+                rel="data",
+            ),
+            models.Link(
                 title="TiTiler-STACAPI Documentation (external link)",
                 href="https://developmentseed.org/titiler-stacapi/",
                 type=MediaType.html,
