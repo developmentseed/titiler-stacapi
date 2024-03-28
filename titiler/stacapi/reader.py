@@ -8,7 +8,13 @@ import rasterio
 from morecantile import TileMatrixSet
 from rasterio.crs import CRS
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
+from rio_tiler.errors import InvalidAssetName
 from rio_tiler.io import BaseReader, Reader, stac
+from rio_tiler.types import AssetInfo
+
+from titiler.stacapi.settings import STACSettings
+
+stac_config = STACSettings()
 
 
 @attr.s
@@ -54,3 +60,44 @@ class STACReader(stac.STACReader):
     @maxzoom.default
     def _maxzoom(self):
         return self.tms.maxzoom
+
+    def _get_asset_info(self, asset: str) -> AssetInfo:
+        """Validate asset names and return asset's url.
+
+        Args:
+            asset (str): STAC asset name.
+
+        Returns:
+            str: STAC asset href.
+
+        """
+        if asset not in self.assets:
+            raise InvalidAssetName(
+                f"'{asset}' is not valid, should be one of {self.assets}"
+            )
+
+        asset_info = self.item.assets[asset]
+        extras = asset_info.extra_fields
+
+        url = asset_info.get_absolute_href() or asset_info.href
+        if alternate := stac_config.alternate_url:
+            url = asset_info[alternate]["href"]
+
+        info = AssetInfo(
+            url=url,
+            metadata=extras,
+        )
+
+        if head := extras.get("file:header_size"):
+            info["env"] = {"GDAL_INGESTED_BYTES_AT_OPEN": head}
+
+        if bands := extras.get("raster:bands"):
+            stats = [
+                (b["statistics"]["minimum"], b["statistics"]["maximum"])
+                for b in bands
+                if {"minimum", "maximum"}.issubset(b.get("statistics", {}))
+            ]
+            if len(stats) == len(bands):
+                info["dataset_statistics"] = stats
+
+        return info
