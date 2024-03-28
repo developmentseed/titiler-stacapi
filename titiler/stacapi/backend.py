@@ -24,11 +24,12 @@ from rio_tiler.models import ImageData
 from rio_tiler.mosaic import mosaic_reader
 from rio_tiler.types import AssetInfo, BBox
 
-from titiler.stacapi.settings import CacheSettings, RetrySettings
+from titiler.stacapi.settings import CacheSettings, RetrySettings, STACSettings
 from titiler.stacapi.utils import Timer, retry
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
+stac_config = STACSettings()
 
 
 @attr.s
@@ -89,10 +90,12 @@ class CustomSTACReader(MultiBaseReader):
             )
 
         asset_info = self.input["assets"][asset]
-        info = AssetInfo(
-            url=asset_info["href"],
-            env={},
-        )
+
+        url = asset_info["href"]
+        if alternate := stac_config.alternate_url:
+            url = asset_info[alternate]["href"]
+
+        info = AssetInfo(url=url, env={})
 
         if header_size := asset_info.get("file:header_size"):
             info["env"]["GDAL_INGESTED_BYTES_AT_OPEN"] = header_size

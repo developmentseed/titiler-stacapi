@@ -80,3 +80,15 @@ class STACAPISettings(BaseSettings):
         "env_file": ".env",
         "extra": "ignore",
     }
+
+
+class STACSettings(BaseSettings):
+    """STAC API settings"""
+
+    alternate_url: Optional[str] = None
+
+    model_config = {
+        "env_prefix": "TITILER_STACAPI_",
+        "env_file": ".env",
+        "extra": "ignore",
+    }
