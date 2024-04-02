@@ -119,6 +119,7 @@ class MosaicTilerFactory(BaseTilerFactory):
                     path_format, param_convertors, request.path_params.copy()
                 )
             base_url += prefix
+
         return base_url
 
     def register_routes(self) -> None:
@@ -416,7 +417,7 @@ class MosaicTilerFactory(BaseTilerFactory):
                     "tms": tms,
                     "resolutions": [matrix.cellSize for matrix in tms],
                     "template": {
-                        "api_root": self.get_base_url(request),
+                        "api_root": str(request.base_url).rstrip("/"),
                         "params": request.query_params,
                         "title": "Map",
                     },

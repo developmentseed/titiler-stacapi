@@ -93,6 +93,7 @@ collection = MosaicTilerFactory(
     optional_headers=optional_headers,
     router_prefix="/collections/{collection_id}",
     add_viewer=True,
+    templates=templates,
 )
 app.include_router(
     collection.router, tags=["STAC Collection"], prefix="/collections/{collection_id}"
@@ -205,7 +206,7 @@ def landing(
     if output_type == MediaType.html:
         return create_html_response(
             request,
-            data.model_dump_json(exclude_none=True),
+            data.model_dump(exclude_none=True, mode="json"),
             templates=templates,
             template_name="landing",
         )
