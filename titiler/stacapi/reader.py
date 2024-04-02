@@ -81,7 +81,7 @@ class STACReader(stac.STACReader):
 
         url = asset_info.get_absolute_href() or asset_info.href
         if alternate := stac_config.alternate_url:
-            url = asset_info.to_dict()["alternate"]["local"]["href"]
+            url = asset_info.to_dict()["alternate"][alternate]["href"]
 
         info = AssetInfo(
             url=url,
