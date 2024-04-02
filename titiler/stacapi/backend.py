@@ -93,7 +93,7 @@ class CustomSTACReader(MultiBaseReader):
 
         url = asset_info["href"]
         if alternate := stac_config.alternate_url:
-            url = asset_info[alternate]["href"]
+            url = asset_info.to_dict()["alternate"][alternate]["href"]
 
         info = AssetInfo(url=url, env={})
 
