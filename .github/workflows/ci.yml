@@ -95,7 +95,7 @@ jobs:
         with:
           platforms: linux/amd64
           context: .
-          file: Dockerfile
+          file: dockerfiles/Dockerfile
           push: true
           tags: |
             ghcr.io/stac-utils/titiler-stacapi:latest
@@ -107,7 +107,7 @@ jobs:
         with:
           platforms: linux/amd64
           context: .
-          file: Dockerfile
+          file: dockerfiles/Dockerfile
           push: true
           tags: |
             ghcr.io/stac-utils/titiler-stacapi:${{ steps.tag.outputs.version }}
