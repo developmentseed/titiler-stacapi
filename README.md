@@ -57,11 +57,7 @@ $ cd titiler-stacapi
 $ docker-compose up --build api
 ```
 
-It runs `titiler.stacapi` using Gunicorn web server. To run Uvicorn based version:
-
-```
-$ docker-compose up --build api-uvicorn
-```
+It runs `titiler.stacapi` using Gunicorn web server. 
 
 ## Contribution & Development
 
