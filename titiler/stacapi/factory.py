@@ -205,7 +205,7 @@ class MosaicTilerFactory(BaseTilerFactory):
             tms = self.supported_tms.get(tileMatrixSetId)
             with rasterio.Env(**env):
                 with self.reader(
-                    url=api_params["url"],
+                    url=api_params["api_url"],
                     headers=api_params.get("headers", {}),
                     tms=tms,
                     reader_options={**reader_params},
