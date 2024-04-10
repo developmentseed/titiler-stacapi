@@ -60,8 +60,11 @@ class CacheSettings(BaseSettings):
 class RetrySettings(BaseSettings):
     """Retry settings"""
 
+    # Total number of retries to allow.
     retry: Annotated[int, Field(ge=0)] = 3
-    delay: Annotated[float, Field(ge=0.0)] = 0.0
+
+    # A backoff factor to apply between attempts after the second try
+    retry_factor: Annotated[float, Field(ge=0.0)] = 0.0
 
     model_config = {
         "env_prefix": "TITILER_STACAPI_API_",

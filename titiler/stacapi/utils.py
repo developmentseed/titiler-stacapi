@@ -6,37 +6,10 @@ Code from titiler.pgstac and titiler.cmr, MIT License.
 
 import re
 import time
-from typing import Any, Optional, Sequence, Type, Union
+from typing import Any, Optional
 
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates, _TemplateResponse
-
-
-def retry(
-    tries: int,
-    exceptions: Union[Type[Exception], Sequence[Type[Exception]]] = Exception,
-    delay: float = 0.0,
-):
-    """Retry Decorator"""
-
-    def _decorator(func: Any):
-        def _newfn(*args: Any, **kwargs: Any):
-
-            attempt = 0
-            while attempt < tries:
-                try:
-                    return func(*args, **kwargs)
-
-                except exceptions:  # type: ignore
-
-                    attempt += 1
-                    time.sleep(delay)
-
-            return func(*args, **kwargs)
-
-        return _newfn
-
-    return _decorator
 
 
 def create_html_response(

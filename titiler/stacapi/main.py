@@ -18,7 +18,7 @@ from titiler.core.resources.enums import OptionalHeader
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.stacapi import __version__ as titiler_stacapi_version
 from titiler.stacapi import models
-from titiler.stacapi.dependencies import ItemIdParams, OutputType, STACApiParams
+from titiler.stacapi.dependencies import ItemIdParams, OutputType
 from titiler.stacapi.enums import MediaType
 from titiler.stacapi.factory import MosaicTilerFactory
 from titiler.stacapi.reader import STACReader
@@ -89,7 +89,6 @@ if settings.debug:
 # - The `path_dependency` is set to `STACApiParams` which define `{collection_id}`
 # `Path` dependency and other Query parameters used to construct STAC API Search request.
 collection = MosaicTilerFactory(
-    path_dependency=STACApiParams,
     optional_headers=optional_headers,
     router_prefix="/collections/{collection_id}",
     add_viewer=True,
