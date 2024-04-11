@@ -33,6 +33,7 @@ from titiler.core.resources.responses import XMLResponse
 from titiler.core.utils import render_image
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
+from titiler.stacapi.dependencies import APIParams, STACApiParams, STACSearchParams
 
 MOSAIC_THREADS = int(os.getenv("MOSAIC_CONCURRENCY", MAX_THREADS))
 MOSAIC_STRICT_ZOOM = str(os.getenv("MOSAIC_STRICT_ZOOM", False)).lower() in [
@@ -83,7 +84,9 @@ def check_query_params(
 class MosaicTilerFactory(BaseTilerFactory):
     """Custom MosaicTiler for STACAPI Mosaic Backend."""
 
-    path_dependency: Callable[..., Dict]
+    path_dependency: Callable[..., APIParams] = STACApiParams
+
+    search_dependency: Callable[..., Dict] = STACSearchParams
 
     # In this factory, `reader` should be a Mosaic Backend
     # https://developmentseed.org/cogeo-mosaic/advanced/backends/
@@ -173,7 +176,8 @@ class MosaicTilerFactory(BaseTilerFactory):
                     description="Row (Y) index of the tile on the selected TileMatrix. It cannot exceed the MatrixWidth-1 for the selected TileMatrix.",
                 ),
             ],
-            search_query=Depends(self.path_dependency),
+            api_params=Depends(self.path_dependency),
+            search_query=Depends(self.search_dependency),
             scale: Annotated[  # type: ignore
                 Optional[conint(gt=0, le=4)],
                 "Tile size scale. 1=256x256, 2=512x512...",
@@ -201,7 +205,8 @@ class MosaicTilerFactory(BaseTilerFactory):
             tms = self.supported_tms.get(tileMatrixSetId)
             with rasterio.Env(**env):
                 with self.reader(
-                    request.app.state.stac_url,
+                    url=api_params["api_url"],
+                    headers=api_params.get("headers", {}),
                     tms=tms,
                     reader_options={**reader_params},
                     **backend_params,
@@ -275,7 +280,7 @@ class MosaicTilerFactory(BaseTilerFactory):
                     description="Identifier selecting one of the TileMatrixSetId supported"
                 ),
             ],
-            search_query=Depends(self.path_dependency),
+            search_query=Depends(self.search_dependency),
             tile_format: Annotated[
                 Optional[ImageType],
                 Query(
@@ -364,7 +369,7 @@ class MosaicTilerFactory(BaseTilerFactory):
                     description="Identifier selecting one of the TileMatrixSetId supported"
                 ),
             ],
-            search_query=Depends(self.path_dependency),
+            search_query=Depends(self.search_dependency),
             tile_format: Annotated[
                 Optional[ImageType],
                 Query(
@@ -440,7 +445,7 @@ class MosaicTilerFactory(BaseTilerFactory):
                     description="Identifier selecting one of the TileMatrixSetId supported"
                 ),
             ],
-            search_query=Depends(self.path_dependency),
+            search_query=Depends(self.search_dependency),
             tile_format: Annotated[
                 ImageType,
                 Query(description="Output image type. Default is png."),

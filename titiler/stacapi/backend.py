@@ -13,7 +13,8 @@ from cogeo_mosaic.mosaic import MosaicJSON
 from geojson_pydantic import Point, Polygon
 from geojson_pydantic.geometries import Geometry
 from morecantile import Tile, TileMatrixSet
-from pystac_client import Client
+from pystac_client import ItemSearch
+from pystac_client.stac_api_io import StacApiIO
 from rasterio.crs import CRS
 from rasterio.warp import transform, transform_bounds
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
@@ -23,9 +24,10 @@ from rio_tiler.io.base import BaseReader, MultiBaseReader
 from rio_tiler.models import ImageData
 from rio_tiler.mosaic import mosaic_reader
 from rio_tiler.types import AssetInfo, BBox
+from urllib3 import Retry
 
 from titiler.stacapi.settings import CacheSettings, RetrySettings, STACSettings
-from titiler.stacapi.utils import Timer, retry
+from titiler.stacapi.utils import Timer
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
@@ -117,7 +119,8 @@ class STACAPIBackend(BaseBackend):
     """STACAPI Mosaic Backend."""
 
     # STAC API URL
-    input: str = attr.ib()
+    url: str = attr.ib()
+    headers: Dict = attr.ib(factory=dict)
 
     # Because we are not using mosaicjson we are not limited to the WebMercator TMS
     tms: TileMatrixSet = attr.ib(default=WEB_MERCATOR_TMS)
@@ -134,13 +137,15 @@ class STACAPIBackend(BaseBackend):
     crs: CRS = attr.ib(default=WGS84_CRS)
     geographic_crs: CRS = attr.ib(default=WGS84_CRS)
 
-    # The reader is read-only (outside init)
+    input: str = attr.ib(init=False)
     mosaic_def: MosaicJSON = attr.ib(init=False)
 
     _backend_name = "STACAPI"
 
     def __attrs_post_init__(self) -> None:
         """Post Init."""
+        self.input = self.url
+
         # Construct a FAKE mosaicJSON
         # mosaic_def has to be defined.
         # we set `tiles` to an empty list.
@@ -217,13 +222,12 @@ class STACAPIBackend(BaseBackend):
     @cached(  # type: ignore
         TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
         key=lambda self, geom, search_query, **kwargs: hashkey(
-            self.input, str(geom), json.dumps(search_query), **kwargs
+            self.url,
+            str(geom),
+            json.dumps(search_query),
+            json.dumps(self.headers),
+            **kwargs,
         ),
-    )
-    @retry(
-        tries=retry_config.retry,
-        delay=retry_config.delay,
-        # exceptions=(httpx.HTTPError,),
     )
     def get_assets(
         self,
@@ -235,7 +239,13 @@ class STACAPIBackend(BaseBackend):
         search_query = search_query or {}
         fields = fields or ["assets", "id", "bbox", "collection"]
 
-        catalog = Client.open(self.input)
+        stac_api_io = StacApiIO(
+            max_retries=Retry(
+                total=retry_config.retry,
+                backoff_factor=retry_config.retry_factor,
+            ),
+            headers=self.headers,
+        )
 
         params = {
             **search_query,
@@ -244,7 +254,11 @@ class STACAPIBackend(BaseBackend):
         }
         params.pop("bbox", None)
 
-        results = catalog.search(**params)
+        results = ItemSearch(
+            f"{self.url}/search",
+            stac_io=stac_api_io,
+            **params,
+        )
         return list(results.items_as_dicts())
 
     @property
