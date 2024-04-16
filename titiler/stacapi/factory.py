@@ -212,11 +212,11 @@ class MosaicTilerFactory(BaseTilerFactory):
                     **backend_params,
                 ) as src_dst:
                     if MOSAIC_STRICT_ZOOM and (
-                        tile.z < src_dst.minzoom or tile.z > src_dst.maxzoom
+                        z < src_dst.minzoom or z > src_dst.maxzoom
                     ):
                         raise HTTPException(
                             400,
-                            f"Invalid ZOOM level {tile.z}. Should be between {src_dst.minzoom} and {src_dst.maxzoom}",
+                            f"Invalid ZOOM level {z}. Should be between {src_dst.minzoom} and {src_dst.maxzoom}",
                         )
 
                     image, assets = src_dst.tile(
