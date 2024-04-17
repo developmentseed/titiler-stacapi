@@ -22,6 +22,8 @@ nav:
     - Collections: endpoints/collections_endpoints.md
     - Items: endpoints/items_endpoints.md
     - TileMatrixSet: endpoints/tms_endpoints.md
+  - Customization:
+    - Authentication: custom/application_with_auth.md
   - Technical Considerations: technical-considerations.md
   - Development - Contributing: contributing.md
   - Release notes: release-notes.md
