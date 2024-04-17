@@ -4,8 +4,10 @@
 from typing import Any, Dict, List, Optional
 
 import jinja2
-from fastapi import Depends, FastAPI
+import pystac
+from fastapi import Depends, FastAPI, Path
 from fastapi.responses import ORJSONResponse
+from fastapi.security import APIKeyHeader
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
@@ -18,9 +20,15 @@ from titiler.core.resources.enums import OptionalHeader
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.stacapi import __version__ as titiler_stacapi_version
 from titiler.stacapi import models
-from titiler.stacapi.dependencies import ItemIdParams, OutputType
+from titiler.stacapi.dependencies import (
+    APIParams,
+    ItemIdParams,
+    OutputType,
+    STACApiParams,
+    get_stac_item,
+)
 from titiler.stacapi.enums import MediaType
-from titiler.stacapi.factory import MosaicTilerFactory
+from titiler.stacapi.factory import MosaicTilerFactory, OGCWMTSFactory
 from titiler.stacapi.reader import STACReader
 from titiler.stacapi.settings import ApiSettings, STACAPISettings
 from titiler.stacapi.utils import create_html_response
@@ -40,6 +48,43 @@ templates_location.append(jinja2.PackageLoader("titiler.core", "templates"))
 
 jinja2_env = jinja2.Environment(loader=jinja2.ChoiceLoader(templates_location))
 templates = Jinja2Templates(env=jinja2_env)
+
+path_dependency = STACApiParams
+item_param = ItemIdParams
+if stacapi_config.auth:
+    header_scheme = APIKeyHeader(
+        name=stacapi_config.auth, description="STAC API Authorization"
+    )
+
+    def STACApiParamsAuth(
+        request: Request,
+        token: Annotated[str, Depends(header_scheme)],
+    ) -> APIParams:
+        """Return STAC API Parameters."""
+        return APIParams(
+            api_url=request.app.state.stac_url,
+            headers={"Authorization": token},
+        )
+
+    path_dependency = STACApiParamsAuth  # type: ignore
+
+    def ItemIdParams(
+        collection_id: Annotated[
+            str,
+            Path(description="STAC Collection Identifier"),
+        ],
+        item_id: Annotated[str, Path(description="STAC Item Identifier")],
+        api_params=Depends(STACApiParamsAuth),
+    ) -> pystac.Item:
+        """STAC Item dependency for the MultiBaseTilerFactory."""
+        return get_stac_item(
+            api_params["api_url"],
+            collection_id,
+            item_id,
+            headers=api_params.get("headers", {}),
+        )
+
+    item_param = ItemIdParams  # type: ignore
 
 
 app = FastAPI(
@@ -89,6 +134,7 @@ if settings.debug:
 # - The `path_dependency` is set to `STACApiParams` which define `{collection_id}`
 # `Path` dependency and other Query parameters used to construct STAC API Search request.
 collection = MosaicTilerFactory(
+    path_dependency=path_dependency,
     optional_headers=optional_headers,
     router_prefix="/collections/{collection_id}",
     add_viewer=True,
@@ -106,7 +152,7 @@ app.include_router(
 # will then be used in our custom `STACReader`.
 stac = MultiBaseTilerFactory(
     reader=STACReader,
-    path_dependency=ItemIdParams,
+    path_dependency=item_param,
     optional_headers=optional_headers,
     router_prefix="/collections/{collection_id}/items/{item_id}",
     add_viewer=True,
@@ -115,6 +161,17 @@ app.include_router(
     stac.router,
     tags=["STAC Item"],
     prefix="/collections/{collection_id}/items/{item_id}",
+)
+
+###############################################################################
+# OGC WMTS Endpoints
+wmts = OGCWMTSFactory(
+    path_dependency=path_dependency,
+    templates=templates,
+)
+app.include_router(
+    wmts.router,
+    tags=["Web Map Tile Service"],
 )
 
 ###############################################################################

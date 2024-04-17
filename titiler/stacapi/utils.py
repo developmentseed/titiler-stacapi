@@ -6,8 +6,9 @@ Code from titiler.pgstac and titiler.cmr, MIT License.
 
 import re
 import time
-from typing import Any, Optional
+from typing import Any, List, Optional
 
+from morecantile import TileMatrixSet
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
@@ -90,3 +91,33 @@ class Timer(object):
     def from_start(self):
         """Return time elapsed from start."""
         return time.time() - self.start
+
+
+def _tms_limits(
+    tms: TileMatrixSet,
+    bounds: List[float],
+    zooms: Optional[List[int]] = None,
+) -> List:
+    if zooms:
+        minzoom, maxzoom = zooms
+    else:
+        minzoom, maxzoom = tms.minzoom, tms.maxzoom
+
+    tilematrix_limit = []
+    for zoom in range(minzoom, maxzoom + 1):
+        matrix = tms.matrix(zoom)
+        ulTile = tms.tile(bounds[0], bounds[3], zoom)
+        lrTile = tms.tile(bounds[2], bounds[1], zoom)
+        minx, maxx = (min(ulTile.x, lrTile.x), max(ulTile.x, lrTile.x))
+        miny, maxy = (min(ulTile.y, lrTile.y), max(ulTile.y, lrTile.y))
+        tilematrix_limit.append(
+            {
+                "tileMatrix": matrix.id,
+                "minTileRow": max(miny, 0),
+                "maxTileRow": min(maxy, matrix.matrixHeight),
+                "minTileCol": max(minx, 0),
+                "maxTileCol": min(maxx, matrix.matrixWidth),
+            }
+        )
+
+    return tilematrix_limit
