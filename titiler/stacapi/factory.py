@@ -598,19 +598,36 @@ def get_layer_from_collections(
                 if spatial_extent:
                     layer["bbox"] = spatial_extent.bboxes[0]
 
+                # NB. The WMTS spec is contradictory re. the multiplicity
+                # relationships between Layer and TileMatrixSetLink, and
+                # TileMatrixSetLink and tileMatrixSet (URI).
+                # WMTS only support 1 set of limits for a TileMatrixSet
                 if tilematrixsets:
-                    layer["tilematrixsets"] = {
-                        tms_id: _tms_limits(
-                            supported_tms.get(tms_id), layer["bbox"], zooms=zooms
-                        )
-                        for tms_id, zooms in tilematrixsets.items()
-                    }
+                    if len(tilematrixsets) == 1:
+                        layer["tilematrixsets"] = {
+                            tms_id: _tms_limits(
+                                supported_tms.get(tms_id), layer["bbox"], zooms=zooms
+                            )
+                            for tms_id, zooms in tilematrixsets.items()
+                        }
+                    else:
+                        layer["tilematrixsets"] = {
+                            tms_id: None for tms_id, _ in tilematrixsets.items()
+                        }
 
                 else:
-                    layer["tilematrixsets"] = {
-                        tms_id: _tms_limits(supported_tms.get(tms_id), layer["bbox"])
-                        for tms_id in supported_tms.list()
-                    }
+                    tilematrixsets = supported_tms.list()
+                    if len(tilematrixsets) == 1:
+                        layer["tilematrixsets"] = {
+                            tms_id: _tms_limits(
+                                supported_tms.get(tms_id), layer["bbox"]
+                            )
+                            for tms_id in tilematrixsets
+                        }
+                    else:
+                        layer["tilematrixsets"] = {
+                            tms_id: None for tms_id in tilematrixsets
+                        }
 
                 # TODO: handle multiple intervals
                 # Check datacube extension

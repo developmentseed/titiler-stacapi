@@ -87,6 +87,7 @@
         {% if layer.tilematrixsets %}
           {% for tms_id, limits in layer.tilematrixsets.items() %}
           <TileMatrixSet>{{ tms_id }}</TileMatrixSet>
+          {% if limits %}
           <TileMatrixSetLimits>
           {% for limit  in limits %}
             <TileMatrixLimits>
@@ -98,6 +99,7 @@
             </TileMatrixLimits>
           {% endfor %}
           </TileMatrixSetLimits>
+          {% endif %}
           {% endfor %}
         {% endif %}
       </TileMatrixSetLink>
