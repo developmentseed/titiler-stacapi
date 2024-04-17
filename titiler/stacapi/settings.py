@@ -77,7 +77,6 @@ class STACAPISettings(BaseSettings):
     """STAC API settings"""
 
     stac_api_url: str
-    auth: Optional[str] = None
 
     model_config = {
         "env_prefix": "TITILER_STACAPI_",
