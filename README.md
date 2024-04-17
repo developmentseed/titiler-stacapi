@@ -57,7 +57,11 @@ $ cd titiler-stacapi
 $ docker-compose up --build api
 ```
 
-It runs `titiler.stacapi` using Gunicorn web server. 
+It runs `titiler.stacapi` using Gunicorn web server.
+
+### How it works
+
+![](https://github.com/developmentseed/titiler-stacapi/assets/10407788/2e53bfe3-402a-4c57-bf61-c055e32f1362)
 
 ## Contribution & Development
 

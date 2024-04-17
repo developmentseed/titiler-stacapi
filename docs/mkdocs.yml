@@ -18,6 +18,7 @@ nav:
   - Home: index.md
   - Endpoints:
     - endpoints/index.md
+    - OGC WMTS: endpoints/ogc_wmts_endpoints.md
     - Collections: endpoints/collections_endpoints.md
     - Items: endpoints/items_endpoints.md
     - TileMatrixSet: endpoints/tms_endpoints.md
