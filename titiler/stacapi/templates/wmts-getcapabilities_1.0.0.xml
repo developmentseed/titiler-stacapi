@@ -113,7 +113,11 @@
   {% for tms in tilematrixsets %}
   <TileMatrixSet>
     <ows:Identifier>{{ tms.id }}</ows:Identifier>
-    <ows:SupportedCRS>urn:ogc:def:crs:{{ tms.id }}</ows:SupportedCRS>
+    {% if tms.crs.to_epsg() %}
+      <ows:SupportedCRS>urn:ogc:def:crs:epsg::{{tms.crs.to_epsg()}}</ows:SupportedCRS>
+    {% else %}
+      <ows:SupportedCRS>{{ tms.crs.srs.replace("http://www.opengis.net/def/", "urn:ogc:def:").replace("/", ":")}} </ows:SupportedCRS>
+    {% endif %}
     {% for matrix in tms %}
       <TileMatrix>
         <ows:Identifier>{{ matrix.id }}</ows:Identifier>
