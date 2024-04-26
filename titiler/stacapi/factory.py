@@ -810,11 +810,19 @@ class OGCWMTSFactory(BaseTilerFactory):
             ):
                 image = post_process(image)
 
-            if rescale := get_dependency_params(
-                dependency=self.rescale_dependency,
-                query_params=query_params,
-            ):
-                image.rescale(rescale)
+            if "rescale" in query_params:
+                rescales = []
+                for r in query_params["rescale"]:
+                    if not isinstance(r, str):
+                        rescales.append(",".join(map(str, r)))
+                    else:
+                        rescales.append(r)
+
+                if rescale := get_dependency_params(
+                    dependency=self.rescale_dependency,
+                    query_params={"rescale": rescales},
+                ):
+                    image.rescale(rescale)
 
             if color_formula := get_dependency_params(
                 dependency=self.color_formula_dependency,
