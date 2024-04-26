@@ -57,7 +57,7 @@
   <Contents>
   {% for layer in layers %}
     <Layer>
-      <ows:Title>{{ layer.title }}</ows:Title>
+      <ows:Title>{{ layer.title or layer.id }}</ows:Title>
       <ows:WGS84BoundingBox>
         <ows:LowerCorner>{{ layer.bbox[0] }} {{ layer.bbox[1] }}</ows:LowerCorner>
         <ows:UpperCorner>{{ layer.bbox[2] }} {{ layer.bbox[3] }}</ows:UpperCorner>
@@ -113,7 +113,7 @@
   {% for tms in tilematrixsets %}
   <TileMatrixSet>
     <ows:Identifier>{{ tms.id }}</ows:Identifier>
-    <ows:SupportedCRS>{{ tms.crs.srs }}</ows:SupportedCRS>
+    <ows:SupportedCRS>urn:ogc:def:crs:{{ tms.id }}</ows:SupportedCRS>
     {% for matrix in tms %}
       <TileMatrix>
         <ows:Identifier>{{ matrix.id }}</ows:Identifier>
