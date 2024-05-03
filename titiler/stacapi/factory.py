@@ -631,7 +631,13 @@ def get_layer_from_collections(
 
                 if ("cube:dimensions" in collection.extra_fields
                         and "time" in collection.extra_fields["cube:dimensions"]):
-                    layer["time"] = collection.extra_fields["cube:dimensions"]["time"]["values"]
+                    layer["time"] = [
+                        python_datetime.datetime.strptime(
+                            t,
+                            "%Y-%m-%dT%H:%M:%SZ",
+                        ).strftime("%Y-%m-%d")
+                        for t in collection.extra_fields["cube:dimensions"]["time"]["values"]
+                    ]
                 elif intervals := temporal_extent.intervals:
                     start_date = intervals[0][0]
                     end_date = (
