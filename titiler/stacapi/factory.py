@@ -629,10 +629,10 @@ def get_layer_from_collections(
                             tms_id: None for tms_id in tilematrixsets
                         }
 
-                # TODO: handle multiple intervals
-                # Check datacube extension
-                # https://github.com/stac-extensions/datacube?tab=readme-ov-file#temporal-dimension-object
-                if intervals := temporal_extent.intervals:
+                if ("cube:dimensions" in collection.extra_fields
+                        and "time" in collection.extra_fields["cube:dimensions"]):
+                    layer["time"] = collection.extra_fields["cube:dimensions"]["time"]["values"]
+                elif intervals := temporal_extent.intervals:
                     start_date = intervals[0][0]
                     end_date = (
                         intervals[0][1]
