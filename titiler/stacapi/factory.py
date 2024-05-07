@@ -656,6 +656,8 @@ def get_layer_from_collections(
                 # TODO:
                 # special encoding for ColorMaps
                 render = layer["render"] or {}
+                if "colormap" in render:
+                    render["colormap"] = json.dumps(render["colormap"])
                 qs = urlencode(
                     [(k, v) for k, v in render.items() if v is not None],
                     doseq=True,
