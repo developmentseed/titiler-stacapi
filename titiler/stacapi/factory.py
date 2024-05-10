@@ -552,7 +552,7 @@ class WMTSMediaType(str, Enum):
     TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
     key=lambda url, headers, supported_tms: hashkey(url, json.dumps(headers)),
 )
-def get_layer_from_collections(
+def get_layer_from_collections(  # noqa: C901
     url: str,
     headers: Optional[Dict] = None,
     supported_tms: Optional[TileMatrixSets] = None,
@@ -647,9 +647,29 @@ def get_layer_from_collections(
                         for x in range(0, (end_date - start_date).days + 1)
                     ]
 
-                # TODO:
-                # special encoding for ColorMaps
                 render = layer["render"] or {}
+
+                # special encoding for rescale
+                # Per Specification, the rescale entry is a 2d array in form of `[[min, max], [min,max]]`
+                # We need to convert this to `['{min},{max}', '{min},{max}']` for titiler dependency
+                if rescale := render.pop("rescale", None):
+                    rescales = []
+                    for r in rescale:
+                        if not isinstance(r, str):
+                            rescales.append(",".join(map(str, r)))
+                        else:
+                            rescales.append(r)
+
+                    render["rescale"] = rescales
+
+                # special encoding for ColorMaps
+                # Per Specification, the colormap is a JSON object. TiTiler dependency expects a string encoded dict
+                if colormap := render.pop("colormap", None):
+                    if not isinstance(colormap, str):
+                        colormap = json.dumps(colormap)
+
+                    render["colormap"] = colormap
+
                 qs = urlencode(
                     [(k, v) for k, v in render.items() if v is not None],
                     doseq=True,
@@ -810,19 +830,11 @@ class OGCWMTSFactory(BaseTilerFactory):
             ):
                 image = post_process(image)
 
-            if "rescale" in query_params:
-                rescales = []
-                for r in query_params["rescale"]:
-                    if not isinstance(r, str):
-                        rescales.append(",".join(map(str, r)))
-                    else:
-                        rescales.append(r)
-
-                if rescale := get_dependency_params(
-                    dependency=self.rescale_dependency,
-                    query_params={"rescale": rescales},
-                ):
-                    image.rescale(rescale)
+            if rescale := get_dependency_params(
+                dependency=self.rescale_dependency,
+                query_params=query_params,
+            ):
+                image.rescale(rescale)
 
             if color_formula := get_dependency_params(
                 dependency=self.color_formula_dependency,
