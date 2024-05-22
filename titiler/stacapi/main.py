@@ -20,7 +20,7 @@ from titiler.stacapi import __version__ as titiler_stacapi_version
 from titiler.stacapi import models
 from titiler.stacapi.dependencies import ItemIdParams, OutputType, STACApiParams
 from titiler.stacapi.enums import MediaType
-from titiler.stacapi.factory import MosaicTilerFactory, OGCWMTSFactory
+from titiler.stacapi.factory import MosaicTilerFactory
 from titiler.stacapi.reader import STACReader
 from titiler.stacapi.settings import ApiSettings, STACAPISettings
 from titiler.stacapi.utils import create_html_response
@@ -116,17 +116,6 @@ app.include_router(
     stac.router,
     tags=["STAC Item"],
     prefix="/collections/{collection_id}/items/{item_id}",
-)
-
-###############################################################################
-# OGC WMTS Endpoints
-wmts = OGCWMTSFactory(
-    path_dependency=STACApiParams,
-    templates=templates,
-)
-app.include_router(
-    wmts.router,
-    tags=["Web Map Tile Service"],
 )
 
 ###############################################################################
