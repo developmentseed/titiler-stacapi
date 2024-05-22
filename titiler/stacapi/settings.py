@@ -88,6 +88,8 @@ class STACAPISettings(BaseSettings):
 
 class STACSettings(BaseSettings):
     """STAC API settings"""
+    
+    alternate_url: Optional[str] = None
 
     model_config = {
         "env_prefix": "TITILER_STACAPI_",

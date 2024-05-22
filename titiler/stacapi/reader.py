@@ -82,6 +82,9 @@ class STACReader(stac.STACReader):
         extras = asset_info.extra_fields
 
         url = asset_info.get_absolute_href() or asset_info.href
+        if alternate := stac_config.alternate_url:
+            url = asset_info.to_dict()["alternate"][alternate]["href"]
+        
         # No caching of this should be necessary. From the docs https://planetarycomputer.microsoft.com/docs/concepts/sas/#planetary-computer-python-package:
         # A cache is also kept, which tracks expiration values, to ensure new SAS tokens are only requested when needed.
         # We only want to sign requests to MS PC API. Other ways to handle this could be:
