@@ -1,8 +1,8 @@
-# titiler-stacapi
+# titiler-stacapi-mspc
 
 <p align="center">
   <img width="800" src="https://github.com/developmentseed/titiler-stacapi/assets/10407788/bb54162e-9a47-4a67-99e5-6dc91098e048">
-  <p align="center">Connect titiler to STAC APIs</p>
+  <p align="center">Connect titiler to MS Planetary Computer STAC API</p>
 </p>
 
 <p align="center">
