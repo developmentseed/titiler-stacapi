@@ -29,6 +29,7 @@ dependencies = [
     "pystac-client",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
+    "planetary_computer~=1.0.0",
 ]
 dynamic = ["version"]
 

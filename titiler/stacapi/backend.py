@@ -94,8 +94,6 @@ class CustomSTACReader(MultiBaseReader):
         asset_info = self.input["assets"][asset]
 
         url = asset_info["href"]
-        if alternate := stac_config.alternate_url:
-            url = asset_info["alternate"][alternate]["href"]
 
         info = AssetInfo(url=url, env={})
 
