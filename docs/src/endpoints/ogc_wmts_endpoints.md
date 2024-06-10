@@ -2,10 +2,10 @@
 ### OGC WMTS endpoints
 
 
-| Method | URL                                                                                 | Output                       | Description
-| ------ | ------------------------------------------------------------------------------------|------------------------------|--------------
-| `GET`  | `/wmts`                                                                             | XML or image/bin or GeoJSON  | OGC Web map tile service (KVP encoding)
-| `GET`  | `/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}` | image/bin                    | return a web map tile image
+| Method | URL                                                                                        | Output                       | Description
+| ------ | -------------------------------------------------------------------------------------------|------------------------------|--------------
+| `GET`  | `/wmts`                                                                                    | XML or image/bin or GeoJSON  | OGC Web map tile service (KVP encoding)
+| `GET`  | `/layers/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}` | image/bin                    | OGC GetTile (REST encoding)
 
 ### WMTS (GetCapabilities / GetTile / GetFeatureInfo) - KVP Encoding
 
@@ -45,7 +45,7 @@ Example:
 
 ### GetTile - REST
 
-`:endpoint:/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}`
+`:endpoint:/layers/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}`
 
 - PathParams:
     - **Layer** (str): Layer identifier

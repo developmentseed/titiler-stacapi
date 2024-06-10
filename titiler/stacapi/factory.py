@@ -1236,7 +1236,7 @@ class OGCWMTSFactory(BaseTilerFactory):
                 )
 
         @self.router.get(
-            "/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}",
+            "/layers/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}",
             **img_endpoint_params,
         )
         def WMTS_getTile(
@@ -1311,7 +1311,7 @@ class OGCWMTSFactory(BaseTilerFactory):
             reader_params=Depends(self.reader_dependency),
             env=Depends(self.environment_dependency),
         ):
-            """Create map tile."""
+            """OGC WMTS GetTile (REST encoding)"""
             search_query = {"collections": [collectionId], "datetime": timeId}
 
             tms = self.supported_tms.get(tileMatrixSetId)
