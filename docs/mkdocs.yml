@@ -18,10 +18,10 @@ nav:
   - Home: index.md
   - Endpoints:
     - endpoints/index.md
-    - OGC WMTS: endpoints/ogc_wmts_endpoints.md
-    - Collections: endpoints/collections_endpoints.md
-    - Items: endpoints/items_endpoints.md
-    - TileMatrixSet: endpoints/tms_endpoints.md
+    - OGC Web Map Tile Service: endpoints/ogc_wmts_endpoints.md
+    - STAC Collections: endpoints/collections_endpoints.md
+    - STAC Items: endpoints/items_endpoints.md
+    - OGC TileMatrix Schemes: endpoints/tms_endpoints.md
   - Customization:
     - Authentication: custom/application_with_auth.md
   - Technical Considerations: technical-considerations.md

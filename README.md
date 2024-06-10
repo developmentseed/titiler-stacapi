@@ -54,6 +54,7 @@ uvicorn titiler.stacapi.main:app --port 8000
 ```
 $ git clone https://github.com/developmentseed/titiler-stacapi.git
 $ cd titiler-stacapi
+$ export TITILER_STACAPI_STAC_API_URL=https://api.stac
 $ docker-compose up --build api
 ```
 
@@ -62,6 +63,12 @@ It runs `titiler.stacapi` using Gunicorn web server.
 ### How it works
 
 ![](https://github.com/developmentseed/titiler-stacapi/assets/10407788/2e53bfe3-402a-4c57-bf61-c055e32f1362)
+
+### WMTS and the Render extension
+
+`titiler-stacapi` makes extensive use of the [**Render**](https://github.com/stac-extensions/render) extension, specifically at the `Collection` level.
+By using the render's metadata, the `/wmts` endpoint (from the `OGCWMTSFactory` factory) can populate a set of `layers` returned by the `GetCapabilities` service.
+
 
 ## Contribution & Development
 
