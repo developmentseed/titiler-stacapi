@@ -742,7 +742,7 @@ class OGCWMTSFactory(BaseTilerFactory):
         if layer_time and "time" not in req:
             raise HTTPException(
                 status_code=400,
-                detail=f"Missing TIME parameters for layer {layer['id']}",
+                detail=f"Missing 'TIME' parameters for layer {layer['id']}",
             )
 
         if layer_time and req_time not in layer_time:
@@ -1142,7 +1142,8 @@ class OGCWMTSFactory(BaseTilerFactory):
             # GetFeatureInfo Request
             elif request_type.lower() == "getfeatureinfo":
                 req_keys = {
-                    "service" "request",  # wmts
+                    "service",
+                    "request",
                     "version",
                     "layer",
                     "style",
@@ -1163,10 +1164,10 @@ class OGCWMTSFactory(BaseTilerFactory):
                         detail=f"Missing '{request_type}' parameters: {missing_keys}",
                     )
 
-                if req["infoformat"] != "application/xml":
+                if req["infoformat"] != "application/geo+json":
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'InfoFormat' parameter: {req['infoformat']}. Should be 'application/xml'.",
+                        detail=f"Invalid 'InfoFormat' parameter: {req['infoformat']}. Should be 'application/geo+json'.",
                     )
 
                 if req["layer"] not in layers:
@@ -1215,7 +1216,7 @@ class OGCWMTSFactory(BaseTilerFactory):
                         "coordinates": (xs_wgs84[0], ys_wgs84[0]),
                     },
                     "properties": {
-                        "values": image.data[:, j, i],
+                        "values": image.data[:, j, i].tolist(),
                         "I": i,
                         "J": j,
                         "style": req_style,
@@ -1226,7 +1227,6 @@ class OGCWMTSFactory(BaseTilerFactory):
                         "tileCol": req["tilecol"],
                     },
                 }
-
                 return GeoJSONResponse(geojson)
 
             else:
