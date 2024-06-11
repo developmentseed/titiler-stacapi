@@ -1,0 +1,307 @@
+{
+    "id": "46_033111301201_1040010082988200",
+    "bbox": [
+      91.88812130564935,
+      21.518532895453674,
+      91.93942487240946,
+      21.520759340266974
+    ],
+    "type": "Feature",
+    "links": [
+      {
+        "rel": "collection",
+        "type": "application/json",
+        "href": "https://stac.eoapi.dev/collections/MAXAR_BayofBengal_Cyclone_Mocha_May_23"
+      },
+      {
+        "rel": "parent",
+        "type": "application/json",
+        "href": "https://stac.eoapi.dev/collections/MAXAR_BayofBengal_Cyclone_Mocha_May_23"
+      },
+      {
+        "rel": "root",
+        "type": "application/json",
+        "href": "https://stac.eoapi.dev/"
+      },
+      {
+        "rel": "self",
+        "type": "application/geo+json",
+        "href": "https://stac.eoapi.dev/collections/MAXAR_BayofBengal_Cyclone_Mocha_May_23/items/46_033111301201_1040010082988200"
+      }
+    ],
+    "assets": {
+      "visual": {
+        "href": "s3://maxar-opendata/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-visual.tif",
+        "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+        "roles": [
+          "visual"
+        ],
+        "title": "Visual Image",
+        "eo:bands": [
+          {
+            "name": "BAND_R",
+            "common_name": "red",
+            "description": "Red"
+          },
+          {
+            "name": "BAND_G",
+            "common_name": "green",
+            "description": "Green"
+          },
+          {
+            "name": "BAND_B",
+            "common_name": "blue",
+            "description": "Blue"
+          }
+        ],
+        "alternate": {
+          "public": {
+            "href": "https://maxar-opendata.s3.amazonaws.com/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-visual.tif",
+            "title": "Public Access"
+          }
+        },
+        "proj:bbox": [
+          384843.75,
+          2374843.75,
+          390156.25,
+          2380156.25
+        ],
+        "proj:shape": [
+          17408,
+          17408
+        ],
+        "proj:transform": [
+          0.30517578125,
+          0,
+          384843.75,
+          0,
+          -0.30517578125,
+          2380156.25,
+          0,
+          0,
+          1
+        ]
+      },
+      "data-mask": {
+        "href": "s3://maxar-opendata/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-data-mask.gpkg",
+        "type": "application/geopackage+sqlite3",
+        "roles": [
+          "data-mask"
+        ],
+        "title": "Data Mask",
+        "alternate": {
+          "public": {
+            "href": "https://maxar-opendata.s3.amazonaws.com/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-data-mask.gpkg",
+            "title": "Public Access"
+          }
+        }
+      },
+      "ms_analytic": {
+        "href": "s3://maxar-opendata/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-ms.tif",
+        "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+        "roles": [
+          "data"
+        ],
+        "title": "Multispectral Image",
+        "eo:bands": [
+          {
+            "name": "BAND_C",
+            "common_name": "coastal",
+            "description": "Coastal Blue"
+          },
+          {
+            "name": "BAND_B",
+            "common_name": "blue",
+            "description": "Blue"
+          },
+          {
+            "name": "BAND_G",
+            "common_name": "green",
+            "description": "Green"
+          },
+          {
+            "name": "BAND_Y",
+            "common_name": "yellow",
+            "description": "Yellow"
+          },
+          {
+            "name": "BAND_R",
+            "common_name": "red",
+            "description": "Red"
+          },
+          {
+            "name": "BAND_RE",
+            "common_name": "rededge",
+            "description": "Red Edge 1"
+          },
+          {
+            "name": "BAND_N",
+            "common_name": "nir08",
+            "description": "Near Infrared 1"
+          },
+          {
+            "name": "BAND_N2",
+            "common_name": "nir09",
+            "description": "Near Infrared 2"
+          }
+        ],
+        "alternate": {
+          "public": {
+            "href": "https://maxar-opendata.s3.amazonaws.com/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-ms.tif",
+            "title": "Public Access"
+          }
+        },
+        "proj:bbox": [
+          384843.75,
+          2374843.75,
+          390156.25,
+          2380156.25
+        ],
+        "proj:shape": [
+          3993,
+          3993
+        ],
+        "proj:transform": [
+          1.3304532932632107,
+          0,
+          384843.75,
+          0,
+          -1.3304532932632107,
+          2380156.25,
+          0,
+          0,
+          1
+        ]
+      },
+      "pan_analytic": {
+        "href": "s3://maxar-opendata/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-pan.tif",
+        "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+        "roles": [
+          "data"
+        ],
+        "title": "Panchromatic Image",
+        "eo:bands": [
+          {
+            "name": "BAND_P",
+            "description": "Pan"
+          }
+        ],
+        "alternate": {
+          "public": {
+            "href": "https://maxar-opendata.s3.amazonaws.com/events/BayofBengal-Cyclone-Mocha-May-23/ard/46/033111301201/2023-03-14/1040010082988200-pan.tif",
+            "title": "Public Access"
+          }
+        },
+        "proj:bbox": [
+          384843.75,
+          2374843.75,
+          390156.25,
+          2380156.25
+        ],
+        "proj:shape": [
+          15972,
+          15972
+        ],
+        "proj:transform": [
+          0.3326133233158027,
+          0,
+          384843.75,
+          0,
+          -0.3326133233158027,
+          2380156.25,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            91.88812130564935,
+            21.520425546284702
+          ],
+          [
+            91.939408735678,
+            21.520759340266974
+          ],
+          [
+            91.93942487240946,
+            21.518532895453674
+          ],
+          [
+            91.88813292057566,
+            21.518896903912832
+          ],
+          [
+            91.88812130564935,
+            21.520425546284702
+          ]
+        ]
+      ]
+    },
+    "collection": "MAXAR_BayofBengal_Cyclone_Mocha_May_23",
+    "properties": {
+      "gsd": 0.34,
+      "quadkey": "033111301201",
+      "datetime": "2023-03-14T04:30:25Z",
+      "platform": "WV03",
+      "utm_zone": 46,
+      "grid:code": "MXRA-Z46-033111301201",
+      "proj:bbox": [
+        384843.75,
+        2379910.40011545,
+        390156.25,
+        2380156.25
+      ],
+      "proj:epsg": 32646,
+      "catalog_id": "1040010082988200",
+      "view:azimuth": 161.9,
+      "proj:geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              384843.75,
+              2380156.25
+            ],
+            [
+              390156.25,
+              2380156.25
+            ],
+            [
+              390156.25,
+              2379910.40011545
+            ],
+            [
+              384843.75,
+              2379988.3126768884
+            ],
+            [
+              384843.75,
+              2380156.25
+            ]
+          ]
+        ]
+      },
+      "tile:data_area": 1,
+      "view:off_nadir": 19.5,
+      "tile:clouds_area": 0,
+      "view:sun_azimuth": 134.3,
+      "view:sun_elevation": 57.2,
+      "tile:clouds_percent": 0,
+      "ard_metadata_version": "0.0.1",
+      "view:incidence_angle": 68.5
+    },
+    "stac_version": "1.0.0",
+    "stac_extensions": [
+      "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+      "https://stac-extensions.github.io/grid/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
+    ]
+  }

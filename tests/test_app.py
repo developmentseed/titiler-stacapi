@@ -70,3 +70,12 @@ def test_docs(app):
     response = app.get("/api.html")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
+
+
+def test_debug(app):
+    """Test / endpoint."""
+    response = app.get("/debug")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["url"] == "http://something.stac"
