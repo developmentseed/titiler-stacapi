@@ -1,4 +1,4 @@
-"""ogcapi pydantic models.
+"""titiler.stacapi ogcapi pydantic models.
 
 This might be moved in an external python module
 
