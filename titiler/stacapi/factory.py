@@ -629,14 +629,18 @@ def get_layer_from_collections(  # noqa: C901
                             tms_id: None for tms_id in tilematrixsets
                         }
 
-                if ("cube:dimensions" in collection.extra_fields
-                        and "time" in collection.extra_fields["cube:dimensions"]):
+                if (
+                    "cube:dimensions" in collection.extra_fields
+                    and "time" in collection.extra_fields["cube:dimensions"]
+                ):
                     layer["time"] = [
                         python_datetime.datetime.strptime(
                             t,
                             "%Y-%m-%dT%H:%M:%SZ",
                         ).strftime("%Y-%m-%d")
-                        for t in collection.extra_fields["cube:dimensions"]["time"]["values"]
+                        for t in collection.extra_fields["cube:dimensions"]["time"][
+                            "values"
+                        ]
                     ]
                 elif intervals := temporal_extent.intervals:
                     start_date = intervals[0][0]
@@ -1157,7 +1161,9 @@ class OGCWMTSFactory(BaseTilerFactory):
 
                 colormap = get_dependency_params(
                     dependency=self.colormap_dependency,
-                    query_params={"colormap": req["colormap"]} if "colormap" in req else layer.get("render") or {},
+                    query_params={"colormap": req["colormap"]}
+                    if "colormap" in req
+                    else layer.get("render") or {},
                 )
 
                 content, media_type = render_image(
