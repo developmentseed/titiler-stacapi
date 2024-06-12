@@ -781,6 +781,11 @@ class OGCWMTSFactory(BaseTilerFactory):
                 ] = f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
 
             query_params = layer.get("render") or {}
+            if "color_formula" in req:
+                query_params["color_formula"] = req["color_formula"]
+            if "expression" in req:
+                query_params["expression"] = req["expression"]
+
             layer_params = get_dependency_params(
                 dependency=self.layer_dependency,
                 query_params=query_params,
@@ -955,6 +960,26 @@ class OGCWMTSFactory(BaseTilerFactory):
                         "name": "TileCol",
                         "in": "query",
                     },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Color Formula",
+                            "description": "rio-color formula (info: https://github.com/mapbox/rio-color)",
+                            "type": "string",
+                        },
+                        "name": "color_formula",
+                        "in": "query",
+                    },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Colormap name",
+                            "description": "JSON encoded custom Colormap",
+                            "type": "string",
+                        },
+                        "name": "colormap",
+                        "in": "query",
+                    },
                     ################
                     # GetFeatureInfo
                     # InfoFormat
@@ -1122,7 +1147,7 @@ class OGCWMTSFactory(BaseTilerFactory):
 
                 colormap = get_dependency_params(
                     dependency=self.colormap_dependency,
-                    query_params=layer.get("render") or {},
+                    query_params={"colormap": req["colormap"]} if "colormap" in req else layer.get("render") or {},
                 )
 
                 content, media_type = render_image(
