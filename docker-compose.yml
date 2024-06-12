@@ -37,10 +37,14 @@ services:
       # setting the configuration option CPL_VSIL_CURL_CACHE_SIZE (in bytes).
       - CPL_VSIL_CURL_CACHE_SIZE=200000000
       # TiTiler Config
+      # - RIO_TILER_MAX_THREADS=
       - MOSAIC_CONCURRENCY=5
       # AWS S3 endpoint config
       # - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       # - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       # TiTiler STAC API Config
       - TITILER_STACAPI_API_DEBUG=TRUE
-      - TITILER_STACAPI_STAC_API_URL=
+      - TITILER_STACAPI_STAC_API_URL=${TITILER_STACAPI_STAC_API_URL}
+    command:
+      # You can also overwrite the CMD option and use simple `uvicorn` ASGI server
+      bash -c "uvicorn titiler.stacapi.main:app --port 8081 --host 0.0.0.0"

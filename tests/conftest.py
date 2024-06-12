@@ -13,6 +13,8 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 def app(monkeypatch):
     """App fixture."""
     monkeypatch.setenv("TITILER_STACAPI_STAC_API_URL", "http://something.stac")
+    monkeypatch.setenv("TITILER_STACAPI_API_DEBUG", "TRUE")
+    monkeypatch.setenv("TITILER_STACAPI_CACHE_DISABLE", "TRUE")
 
     from titiler.stacapi.main import app
 

@@ -552,7 +552,7 @@ class WMTSMediaType(str, Enum):
     TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
     key=lambda url, headers, supported_tms: hashkey(url, json.dumps(headers)),
 )
-def get_layer_from_collections(
+def get_layer_from_collections(  # noqa: C901
     url: str,
     headers: Optional[Dict] = None,
     supported_tms: Optional[TileMatrixSets] = None,
@@ -653,11 +653,29 @@ def get_layer_from_collections(
                         for x in range(0, (end_date - start_date).days + 1)
                     ]
 
-                # TODO:
-                # special encoding for ColorMaps
                 render = layer["render"] or {}
-                if "colormap" in render:
-                    render["colormap"] = json.dumps(render["colormap"])
+
+                # special encoding for rescale
+                # Per Specification, the rescale entry is a 2d array in form of `[[min, max], [min,max]]`
+                # We need to convert this to `['{min},{max}', '{min},{max}']` for titiler dependency
+                if rescale := render.pop("rescale", None):
+                    rescales = []
+                    for r in rescale:
+                        if not isinstance(r, str):
+                            rescales.append(",".join(map(str, r)))
+                        else:
+                            rescales.append(r)
+
+                    render["rescale"] = rescales
+
+                # special encoding for ColorMaps
+                # Per Specification, the colormap is a JSON object. TiTiler dependency expects a string encoded dict
+                if colormap := render.pop("colormap", None):
+                    if not isinstance(colormap, str):
+                        colormap = json.dumps(colormap)
+
+                    render["colormap"] = colormap
+
                 qs = urlencode(
                     [(k, v) for k, v in render.items() if v is not None],
                     doseq=True,
@@ -730,7 +748,7 @@ class OGCWMTSFactory(BaseTilerFactory):
         if layer_time and "time" not in req:
             raise HTTPException(
                 status_code=400,
-                detail=f"Missing TIME parameters for layer {layer['id']}",
+                detail=f"Missing 'TIME' parameters for layer {layer['id']}",
             )
 
         if layer_time and req_time not in layer_time:
@@ -823,19 +841,11 @@ class OGCWMTSFactory(BaseTilerFactory):
             ):
                 image = post_process(image)
 
-            if "rescale" in query_params:
-                rescales = []
-                for r in query_params["rescale"]:
-                    if not isinstance(r, str):
-                        rescales.append(",".join(map(str, r)))
-                    else:
-                        rescales.append(r)
-
-                if rescale := get_dependency_params(
-                    dependency=self.rescale_dependency,
-                    query_params={"rescale": rescales},
-                ):
-                    image.rescale(rescale)
+            if rescale := get_dependency_params(
+                dependency=self.rescale_dependency,
+                query_params=query_params,
+            ):
+                image.rescale(rescale)
 
             if color_formula := get_dependency_params(
                 dependency=self.color_formula_dependency,
@@ -1163,7 +1173,8 @@ class OGCWMTSFactory(BaseTilerFactory):
             # GetFeatureInfo Request
             elif request_type.lower() == "getfeatureinfo":
                 req_keys = {
-                    "service" "request",  # wmts
+                    "service",
+                    "request",
                     "version",
                     "layer",
                     "style",
@@ -1184,10 +1195,10 @@ class OGCWMTSFactory(BaseTilerFactory):
                         detail=f"Missing '{request_type}' parameters: {missing_keys}",
                     )
 
-                if req["infoformat"] != "application/xml":
+                if req["infoformat"] != "application/geo+json":
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'InfoFormat' parameter: {req['infoformat']}. Should be 'application/xml'.",
+                        detail=f"Invalid 'InfoFormat' parameter: {req['infoformat']}. Should be 'application/geo+json'.",
                     )
 
                 if req["layer"] not in layers:
@@ -1236,7 +1247,7 @@ class OGCWMTSFactory(BaseTilerFactory):
                         "coordinates": (xs_wgs84[0], ys_wgs84[0]),
                     },
                     "properties": {
-                        "values": image.data[:, j, i],
+                        "values": image.data[:, j, i].tolist(),
                         "I": i,
                         "J": j,
                         "style": req_style,
@@ -1247,7 +1258,6 @@ class OGCWMTSFactory(BaseTilerFactory):
                         "tileCol": req["tilecol"],
                     },
                 }
-
                 return GeoJSONResponse(geojson)
 
             else:
@@ -1257,7 +1267,7 @@ class OGCWMTSFactory(BaseTilerFactory):
                 )
 
         @self.router.get(
-            "/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}",
+            "/layers/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}",
             **img_endpoint_params,
         )
         def WMTS_getTile(
@@ -1332,7 +1342,7 @@ class OGCWMTSFactory(BaseTilerFactory):
             reader_params=Depends(self.reader_dependency),
             env=Depends(self.environment_dependency),
         ):
-            """Create map tile."""
+            """OGC WMTS GetTile (REST encoding)"""
             search_query = {"collections": [collectionId], "datetime": timeId}
 
             tms = self.supported_tms.get(tileMatrixSetId)

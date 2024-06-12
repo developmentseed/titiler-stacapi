@@ -84,6 +84,17 @@ if settings.debug:
     optional_headers = [OptionalHeader.server_timing, OptionalHeader.x_assets]
 
 ###############################################################################
+# OGC WMTS Endpoints
+wmts = OGCWMTSFactory(
+    path_dependency=STACApiParams,
+    templates=templates,
+)
+app.include_router(
+    wmts.router,
+    tags=["OGC Web Map Tile Service"],
+)
+
+###############################################################################
 # STAC COLLECTION Endpoints
 # Notes:
 # - The `path_dependency` is set to `STACApiParams` which define `{collection_id}`
@@ -119,20 +130,9 @@ app.include_router(
 )
 
 ###############################################################################
-# OGC WMTS Endpoints
-wmts = OGCWMTSFactory(
-    path_dependency=STACApiParams,
-    templates=templates,
-)
-app.include_router(
-    wmts.router,
-    tags=["Web Map Tile Service"],
-)
-
-###############################################################################
 # Tiling Schemes Endpoints
 tms = TMSFactory()
-app.include_router(tms.router, tags=["Tiling Schemes"])
+app.include_router(tms.router, tags=["OGC TileMatrix Schemes"])
 
 ###############################################################################
 # Algorithms Endpoints
@@ -223,3 +223,33 @@ def landing(
         )
 
     return data
+
+
+if settings.debug:
+
+    @app.get("/debug", include_in_schema=False, tags=["DEBUG"])
+    def debug(request: Request) -> Dict:
+        """APP Info."""
+
+        import rasterio
+        from fastapi import __version__ as fastapi_version
+        from pydantic import __version__ as pydantic_version
+        from rio_tiler import __version__ as rio_tiler_version
+        from starlette import __version__ as starlette_version
+
+        from titiler.core import __version__ as titiler_version
+
+        return {
+            "url": request.app.state.stac_url,
+            "versions": {
+                "titiler.stacapi": titiler_stacapi_version,
+                "titiler.core": titiler_version,
+                "rio-tiler": rio_tiler_version,
+                "rasterio": rasterio.__version__,
+                "gdal": rasterio.__gdal_version__,
+                "proj": rasterio.__proj_version__,
+                "fastapi": fastapi_version,
+                "starlette": starlette_version,
+                "pydantic": pydantic_version,
+            },
+        }
