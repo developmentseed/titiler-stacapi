@@ -629,10 +629,20 @@ def get_layer_from_collections(  # noqa: C901
                             tms_id: None for tms_id in tilematrixsets
                         }
 
-                # TODO: handle multiple intervals
-                # Check datacube extension
-                # https://github.com/stac-extensions/datacube?tab=readme-ov-file#temporal-dimension-object
-                if intervals := temporal_extent.intervals:
+                if (
+                    "cube:dimensions" in collection.extra_fields
+                    and "time" in collection.extra_fields["cube:dimensions"]
+                ):
+                    layer["time"] = [
+                        python_datetime.datetime.strptime(
+                            t,
+                            "%Y-%m-%dT%H:%M:%SZ",
+                        ).strftime("%Y-%m-%d")
+                        for t in collection.extra_fields["cube:dimensions"]["time"][
+                            "values"
+                        ]
+                    ]
+                elif intervals := temporal_extent.intervals:
                     start_date = intervals[0][0]
                     end_date = (
                         intervals[0][1]
@@ -793,6 +803,11 @@ class OGCWMTSFactory(BaseTilerFactory):
                 ] = f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
 
             query_params = layer.get("render") or {}
+            if "color_formula" in req:
+                query_params["color_formula"] = req["color_formula"]
+            if "expression" in req:
+                query_params["expression"] = req["expression"]
+
             layer_params = get_dependency_params(
                 dependency=self.layer_dependency,
                 query_params=query_params,
@@ -957,6 +972,26 @@ class OGCWMTSFactory(BaseTilerFactory):
                             "type": "integer",
                         },
                         "name": "TileCol",
+                        "in": "query",
+                    },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Color Formula",
+                            "description": "rio-color formula (info: https://github.com/mapbox/rio-color)",
+                            "type": "string",
+                        },
+                        "name": "color_formula",
+                        "in": "query",
+                    },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Colormap name",
+                            "description": "JSON encoded custom Colormap",
+                            "type": "string",
+                        },
+                        "name": "colormap",
                         "in": "query",
                     },
                     ################
@@ -1126,7 +1161,9 @@ class OGCWMTSFactory(BaseTilerFactory):
 
                 colormap = get_dependency_params(
                     dependency=self.colormap_dependency,
-                    query_params=layer.get("render") or {},
+                    query_params={"colormap": req["colormap"]}
+                    if "colormap" in req
+                    else layer.get("render") or {},
                 )
 
                 content, media_type = render_image(
