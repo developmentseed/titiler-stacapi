@@ -3,6 +3,7 @@
 import datetime as python_datetime
 import json
 import os
+from copy import copy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Literal, Optional, Type
@@ -802,7 +803,7 @@ class OGCWMTSFactory(BaseTilerFactory):
                     "datetime"
                 ] = f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
 
-            query_params = layer.get("render") or {}
+            query_params = copy(layer.get("render")) or {}
             if "color_formula" in req:
                 query_params["color_formula"] = req["color_formula"]
             if "expression" in req:
