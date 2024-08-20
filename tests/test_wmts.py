@@ -88,10 +88,11 @@ def test_wmts_getcapabilities(client, app):
     assert response.status_code == 200
     wmts = WebMapTileService(url="/wmts", xml=response.text.encode())
     layers = list(wmts.contents)
-    assert len(layers) == 3
+    assert len(layers) == 4
     assert "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual" in layers
     assert "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color" in layers
     assert "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visualr" in layers
+    assert "MAXAR_BayofBengal_Cyclone_Mocha_May_23_cube_dimensions_visual" in layers
 
     layer = wmts["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
     assert "WebMercatorQuad" in layer.tilematrixsetlinks
@@ -103,6 +104,11 @@ def test_wmts_getcapabilities(client, app):
     query = parse_qs(params)
     assert query["assets"] == ["visual"]
     assert query["asset_bidx"] == ["visual|1,2,3"]
+
+    layer = wmts["MAXAR_BayofBengal_Cyclone_Mocha_May_23_cube_dimensions_visual"]
+    assert "TIME" in layer.dimensions
+    times = layer.dimensions["TIME"]["values"]
+    assert len(times) == 6
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
@@ -285,6 +291,63 @@ def test_wmts_gettile(client, get_assets, rio, app):
         },
     )
     assert response.status_code == 200
+
+
+@patch("rio_tiler.io.rasterio.rasterio")
+@patch("titiler.stacapi.factory.STACAPIBackend.get_assets")
+@patch("titiler.stacapi.factory.Client")
+def test_wmts_gettile_param_override(client, get_assets, rio, app):
+    """test STAC items endpoints."""
+    rio.open = mock_rasterio_open
+
+    with open(catalog_json, "r") as f:
+        collections = [
+            pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
+        ]
+        client.open.return_value.get_collections.return_value = collections
+
+    with open(item_json, "r") as f:
+        get_assets.return_value = [json.loads(f.read())]
+
+    response = app.get(
+        "/wmts",
+        params={
+            "SERVICE": "WMTS",
+            "VERSION": "1.0.0",
+            "REQUEST": "getTile",
+            "LAYER": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+            "STYLE": "default",
+            "FORMAT": "image/png",
+            "TILEMATRIXSET": "WebMercatorQuad",
+            "TILEMATRIX": 14,
+            "TILEROW": 7188,
+            "TILECOL": 12375,
+            "TIME": "2023-01-05",
+            "expression": "(where(visual_invalid >= 0))",
+        },
+    )
+    assert response.status_code == 500
+    assert "Could not find any valid assets" in response.json()["detail"]
+
+    response = app.get(
+        "/wmts",
+        params={
+            "SERVICE": "WMTS",
+            "VERSION": "1.0.0",
+            "REQUEST": "getTile",
+            "LAYER": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "STYLE": "default",
+            "FORMAT": "image/png",
+            "TILEMATRIXSET": "WebMercatorQuad",
+            "TILEMATRIX": 14,
+            "TILEROW": 7188,
+            "TILECOL": 12375,
+            "TIME": "2023-01-05",
+            "colormap": "{invalid}",
+        },
+    )
+    assert response.status_code == 400
+    assert "Could not parse the colormap value" in response.json()["detail"]
 
 
 @patch("rio_tiler.io.rasterio.rasterio")

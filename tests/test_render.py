@@ -25,7 +25,7 @@ def test_render(client):
     collections_render = get_layer_from_collections(
         "https://something.stac", None, None
     )
-    assert len(collections_render) == 3
+    assert len(collections_render) == 4
 
     visual = collections_render["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
     assert visual["bbox"]
