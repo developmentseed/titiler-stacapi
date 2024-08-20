@@ -27,12 +27,20 @@
 
 ## Installation
 
-Install from sources and run for development:
+To install from PyPI and run:
 
+```bash
+# Make sure you have pip up to date
+python -m pip install -U pip
+python -m pip  install titiler.stacapi
 ```
-$ git clone https://github.com/developmentseed/titiler-stacapi.git
-$ cd titiler-stacapi
-$ python -m pip install -e .
+
+or from sources and run for development:
+
+```bash
+git clone https://github.com/developmentseed/titiler-stacapi.git
+cd titiler-stacapi
+python -m pip install -e .
 ```
 
 ## Launch

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2024-08-20
+
+* add support for `cube:dimensions` extension (author @jverrydt, https://github.com/developmentseed/titiler-stacapi/pull/26)
+* allow overriding the colormap/expression in the  (author @jverrydt, https://github.com/developmentseed/titiler-stacapi/pull/26)
+
 ## [0.1.0] - 2024-06-11
 
 * initial release
