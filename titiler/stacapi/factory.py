@@ -19,7 +19,6 @@ from fastapi.dependencies.utils import get_dependant, request_params_to_args
 from morecantile import tms as morecantile_tms
 from morecantile.defaults import TileMatrixSets
 from pydantic import conint
-from pystac_client import Client
 from pystac_client.stac_api_io import StacApiIO
 from rasterio.transform import xy as rowcol_to_coords
 from rasterio.warp import transform as transform_points
@@ -45,6 +44,7 @@ from titiler.core.resources.enums import ImageType, MediaType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse, XMLResponse
 from titiler.core.utils import render_image
 from titiler.mosaic.factory import PixelSelectionParams
+from titiler.pystac import AdvancedClient
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import APIParams, STACApiParams, STACSearchParams
 from titiler.stacapi.models import FeatureInfo, LayerDict
@@ -568,7 +568,7 @@ def get_layer_from_collections(  # noqa: C901
         ),
         headers=headers,
     )
-    catalog = Client.open(url, stac_io=stac_api_io)
+    catalog = AdvancedClient.open(url, stac_io=stac_api_io)
 
     layers: Dict[str, LayerDict] = {}
     for collection in catalog.get_collections():
@@ -580,6 +580,7 @@ def get_layer_from_collections(  # noqa: C901
 
                 tilematrixsets = render.pop("tilematrixsets", None)
                 output_format = render.pop("format", None)
+                aggregation = render.pop("aggregation", None)
 
                 _ = render.pop("minmax_zoom", None)  # Not Used
                 _ = render.pop("title", None)  # Not Used
@@ -642,6 +643,20 @@ def get_layer_from_collections(  # noqa: C901
                         for t in collection.extra_fields["cube:dimensions"]["time"][
                             "values"
                         ]
+                    ]
+                elif aggregation and aggregation["name"] == "datetime_frequency":
+                    datetime_aggregation = catalog.get_aggregation(
+                        collection_id=collection.id,
+                        aggregation="datetime_frequency",
+                        aggregation_params=aggregation["params"],
+                    )
+                    layer["time"] = [
+                        python_datetime.datetime.strptime(
+                            t["key"],
+                            "%Y-%m-%dT%H:%M:%S.000Z",
+                        ).strftime("%Y-%m-%d")
+                        for t in datetime_aggregation
+                        if t["frequency"] > 0
                     ]
                 elif intervals := temporal_extent.intervals:
                     start_date = intervals[0][0]

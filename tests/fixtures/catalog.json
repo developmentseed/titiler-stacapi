@@ -321,6 +321,23 @@
       "rel": "self",
       "type": "application/json",
       "href": "https://stac.endpoint.io/collections"
+    },
+    {
+      "rel": "data",
+      "type": "application/json",
+      "href": "https://stac.endpoint.io/collections"
+    },
+    {
+      "rel": "aggregate",
+      "type": "application/json",
+      "title": "Aggregate",
+      "href": "https://stac.endpoint.io/aggregate"
+    },
+    {
+      "rel": "aggregations",
+      "type": "application/json",
+      "title": "Aggregations",
+      "href": "https://stac.endpoint.io/aggregations"
     }
   ]
 }
