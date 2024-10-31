@@ -1,7 +1,7 @@
 """titiler.pystac"""
 
 __all__ = [
-    "AdvancedClient",
+    "Client",
 ]
 
-from titiler.pystac.advanced_client import AdvancedClient
+from titiler.pystac.advanced_client import Client

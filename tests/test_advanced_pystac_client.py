@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from titiler.pystac import AdvancedClient
+from titiler.pystac import Client
 
 catalog_json = os.path.join(os.path.dirname(__file__), "fixtures", "catalog.json")
 
@@ -19,7 +19,7 @@ def mock_stac_io():
 @pytest.fixture
 def client(mock_stac_io):
     """STAC client mock"""
-    client = AdvancedClient(id="pystac-client", description="pystac-client")
+    client = Client(id="pystac-client", description="pystac-client")
 
     with open(catalog_json, "r") as f:
         catalog = json.loads(f.read())
@@ -42,7 +42,7 @@ def test_get_supported_aggregations(client, mock_stac_io):
 
 
 @patch(
-    "titiler.pystac.advanced_client.AdvancedClient.get_supported_aggregations",
+    "titiler.pystac.advanced_client.Client.get_supported_aggregations",
     return_value=["datetime_frequency"],
 )
 def test_get_aggregation_unsupported(supported_aggregations, client):
@@ -58,7 +58,7 @@ def test_get_aggregation_unsupported(supported_aggregations, client):
 
 
 @patch(
-    "titiler.pystac.advanced_client.AdvancedClient.get_supported_aggregations",
+    "titiler.pystac.advanced_client.Client.get_supported_aggregations",
     return_value=["datetime_frequency"],
 )
 def test_get_aggregation(supported_aggregations, client, mock_stac_io):
@@ -102,7 +102,7 @@ def test_get_aggregation(supported_aggregations, client, mock_stac_io):
 
 
 @patch(
-    "titiler.pystac.advanced_client.AdvancedClient.get_supported_aggregations",
+    "titiler.pystac.advanced_client.Client.get_supported_aggregations",
     return_value=["datetime_frequency"],
 )
 def test_get_aggregation_no_response(supported_aggregations, client, mock_stac_io):

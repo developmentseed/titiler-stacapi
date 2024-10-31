@@ -1,7 +1,7 @@
 """
 This module provides an advanced client for interacting with STAC (SpatioTemporal Asset Catalog) APIs.
 
-The `AdvancedClient` class extends the basic functionality of the `pystac.Client` to include
+The `Client` class extends the basic functionality of the `pystac.Client` to include
 methods for retrieving and aggregating data from STAC collections.
 """
 
@@ -10,11 +10,11 @@ from typing import Dict, List, Optional
 from urllib.parse import urlencode
 
 import pystac
-from pystac_client import Client
+import pystac_client
 
 
-class AdvancedClient(Client):
-    """AdvancedClient extends the basic functionality of the pystac.Client class."""
+class Client(pystac_client.Client):
+    """Client extends the basic functionality of the pystac.Client class."""
 
     def get_aggregation(
         self,

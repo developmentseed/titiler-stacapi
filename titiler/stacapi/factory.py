@@ -44,7 +44,7 @@ from titiler.core.resources.enums import ImageType, MediaType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse, XMLResponse
 from titiler.core.utils import render_image
 from titiler.mosaic.factory import PixelSelectionParams
-from titiler.pystac import AdvancedClient
+from titiler.pystac import Client
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import APIParams, STACApiParams, STACSearchParams
 from titiler.stacapi.models import FeatureInfo, LayerDict
@@ -568,7 +568,7 @@ def get_layer_from_collections(  # noqa: C901
         ),
         headers=headers,
     )
-    catalog = AdvancedClient.open(url, stac_io=stac_api_io)
+    catalog = Client.open(url, stac_io=stac_api_io)
 
     layers: Dict[str, LayerDict] = {}
     for collection in catalog.get_collections():
