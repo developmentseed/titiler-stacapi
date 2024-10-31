@@ -60,7 +60,7 @@ class Client(pystac_client.Client):
 
         return aggregation_data
 
-    def get_supported_aggregations(self) -> list[str]:
+    def get_supported_aggregations(self) -> List[str]:
         """Get the supported aggregation types.
 
         Returns:
