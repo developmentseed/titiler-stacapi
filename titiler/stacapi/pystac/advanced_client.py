@@ -31,8 +31,6 @@ class Client(pystac_client.Client):
         Returns:
             List[str]: The aggregation response.
         """
-        assert self._stac_io is not None
-
         if aggregation not in self.get_supported_aggregations():
             warnings.warn(
                 f"Aggregation type {aggregation} is not supported", stacklevel=1
