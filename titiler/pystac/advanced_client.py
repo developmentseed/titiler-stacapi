@@ -6,7 +6,7 @@ methods for retrieving and aggregating data from STAC collections.
 """
 
 import warnings
-from typing import Optional
+from typing import Dict, List, Optional
 from urllib.parse import urlencode
 
 import pystac
@@ -20,8 +20,8 @@ class AdvancedClient(Client):
         self,
         collection_id: str,
         aggregation: str,
-        aggregation_params: Optional[dict] = None,
-    ) -> list[dict]:
+        aggregation_params: Optional[Dict] = None,
+    ) -> List[Dict]:
         """Perform an aggregation on a STAC collection.
 
         Args:
