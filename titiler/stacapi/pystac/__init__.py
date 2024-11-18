@@ -4,4 +4,4 @@ __all__ = [
     "Client",
 ]
 
-from titiler.stacapi.pystac.advanced_client import Client
+from .advanced_client import Client
