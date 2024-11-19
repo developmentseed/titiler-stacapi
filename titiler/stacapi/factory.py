@@ -19,7 +19,6 @@ from fastapi.dependencies.utils import get_dependant, request_params_to_args
 from morecantile import tms as morecantile_tms
 from morecantile.defaults import TileMatrixSets
 from pydantic import conint
-from pystac_client import Client
 from pystac_client.stac_api_io import StacApiIO
 from rasterio.transform import xy as rowcol_to_coords
 from rasterio.warp import transform as transform_points
@@ -48,6 +47,7 @@ from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import APIParams, STACApiParams, STACSearchParams
 from titiler.stacapi.models import FeatureInfo, LayerDict
+from titiler.stacapi.pystac import Client
 from titiler.stacapi.settings import CacheSettings, RetrySettings
 from titiler.stacapi.utils import _tms_limits
 
@@ -580,6 +580,7 @@ def get_layer_from_collections(  # noqa: C901
 
                 tilematrixsets = render.pop("tilematrixsets", None)
                 output_format = render.pop("format", None)
+                aggregation = render.pop("aggregation", None)
 
                 _ = render.pop("minmax_zoom", None)  # Not Used
                 _ = render.pop("title", None)  # Not Used
@@ -642,6 +643,20 @@ def get_layer_from_collections(  # noqa: C901
                         for t in collection.extra_fields["cube:dimensions"]["time"][
                             "values"
                         ]
+                    ]
+                elif aggregation and aggregation["name"] == "datetime_frequency":
+                    datetime_aggregation = catalog.get_aggregation(
+                        collection_id=collection.id,
+                        aggregation="datetime_frequency",
+                        aggregation_params=aggregation["params"],
+                    )
+                    layer["time"] = [
+                        python_datetime.datetime.strptime(
+                            t["key"],
+                            "%Y-%m-%dT%H:%M:%S.000Z",
+                        ).strftime("%Y-%m-%d")
+                        for t in datetime_aggregation
+                        if t["frequency"] > 0
                     ]
                 elif intervals := temporal_extent.intervals:
                     start_date = intervals[0][0]
