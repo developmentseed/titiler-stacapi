@@ -723,6 +723,8 @@ class OGCWMTSFactory(BaseTilerFactory):
 
     path_dependency: Callable[..., APIParams] = STACApiParams
 
+    search_dependency: Callable[..., Dict] = STACSearchParams
+
     # In this factory, `reader` should be a Mosaic Backend
     # https://developmentseed.org/cogeo-mosaic/advanced/backends/
     reader: Type[BaseBackend] = STACAPIBackend
@@ -803,9 +805,8 @@ class OGCWMTSFactory(BaseTilerFactory):
             ###########################################################
             # STAC Query parameter provided by the the render extension and QueryParameters
             ###########################################################
-            search_query: Dict[str, Any] = {
-                "collections": [layer["collection"]],
-            }
+            query_params = copy(layer.get("render")) or {}
+            query_params["collections"] = [layer["collection"]]
 
             if req_time:
                 start_datetime = python_datetime.datetime.strptime(
@@ -814,15 +815,19 @@ class OGCWMTSFactory(BaseTilerFactory):
                 ).replace(tzinfo=python_datetime.timezone.utc)
                 end_datetime = start_datetime + python_datetime.timedelta(days=1)
 
-                search_query[
+                query_params[
                     "datetime"
                 ] = f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
 
-            query_params = copy(layer.get("render")) or {}
             if "color_formula" in req:
                 query_params["color_formula"] = req["color_formula"]
             if "expression" in req:
                 query_params["expression"] = req["expression"]
+
+            search_query = get_dependency_params(
+                dependency=self.search_dependency,
+                query_params=query_params,
+            )
 
             layer_params = get_dependency_params(
                 dependency=self.layer_dependency,
