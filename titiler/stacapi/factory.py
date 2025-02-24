@@ -45,7 +45,12 @@ from titiler.core.resources.responses import GeoJSONResponse, XMLResponse
 from titiler.core.utils import render_image
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
-from titiler.stacapi.dependencies import APIParams, STACApiParams, STACSearchParams
+from titiler.stacapi.dependencies import (
+    APIParams,
+    STACApiParams,
+    STACQueryParams,
+    STACSearchParams,
+)
 from titiler.stacapi.models import FeatureInfo, LayerDict
 from titiler.stacapi.pystac import Client
 from titiler.stacapi.settings import CacheSettings, RetrySettings
@@ -723,11 +728,11 @@ class OGCWMTSFactory(BaseTilerFactory):
 
     path_dependency: Callable[..., APIParams] = STACApiParams
 
-    search_dependency: Callable[..., Dict] = STACSearchParams
-
     # In this factory, `reader` should be a Mosaic Backend
     # https://developmentseed.org/cogeo-mosaic/advanced/backends/
     reader: Type[BaseBackend] = STACAPIBackend
+
+    query_dependency: Callable[..., Any] = STACQueryParams
 
     # Because the endpoints should work with STAC Items,
     # the `layer_dependency` define which query parameters are mandatory/optional to `display` images
@@ -806,7 +811,6 @@ class OGCWMTSFactory(BaseTilerFactory):
             # STAC Query parameter provided by the the render extension and QueryParameters
             ###########################################################
             query_params = copy(layer.get("render")) or {}
-            query_params["collections"] = [layer["collection"]]
 
             if req_time:
                 start_datetime = python_datetime.datetime.strptime(
@@ -825,9 +829,10 @@ class OGCWMTSFactory(BaseTilerFactory):
                 query_params["expression"] = req["expression"]
 
             search_query = get_dependency_params(
-                dependency=self.search_dependency,
+                dependency=self.query_dependency,
                 query_params=query_params,
             )
+            search_query["collections"] = [layer["collection"]]
 
             layer_params = get_dependency_params(
                 dependency=self.layer_dependency,
