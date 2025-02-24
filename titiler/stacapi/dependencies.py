@@ -152,34 +152,28 @@ def ItemIdParams(
     )
 
 
-def STACSearchParams(
-    request: Request,
-    collection_id: Annotated[
-        str,
-        Path(description="STAC Collection Identifier"),
-    ],
-    ids: Annotated[Optional[str], Query(description="Filter by Ids.")] = None,
+def STACQueryParams(
     bbox: Annotated[
         Optional[str],
         Query(description="Spatial Filter."),
     ] = None,
     datetime: Annotated[Optional[str], Query(description="Temporal Filter.")] = None,
-    # sortby: Annotated[
-    #     Optional[str],
-    #     Query(
-    #         description="Column Sort the items by Column (ascending (default) or descending).",
-    #     ),
-    # ] = None,
-    # query: Annotated[
-    #     Optional[str], Query(description="CQL2 Filter", alias="filter")
-    # ] = None,
-    # filter_lang: Annotated[
-    #     Optional[Literal["cql2-text", "cql2-json"]],
-    #     Query(
-    #         description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
-    #         alias="filter-lang",
-    #     ),
-    # ] = None,
+    sortby: Annotated[
+        Optional[str],
+        Query(
+            description="Column Sort the items by Column (ascending (default) or descending).",
+        ),
+    ] = None,
+    query: Annotated[
+        Optional[str], Query(description="CQL2 Filter", alias="filter")
+    ] = None,
+    filter_lang: Annotated[
+        Optional[Literal["cql2-text", "cql2-json"]],
+        Query(
+            description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
+            alias="filter-lang",
+        ),
+    ] = None,
     limit: Annotated[
         Optional[int],
         Query(description="Limit the number of items per page search (default: 10)"),
@@ -191,13 +185,28 @@ def STACSearchParams(
 ) -> Dict:
     """Dependency to construct STAC API Search Query."""
     return {
-        "collections": [collection_id],
-        "ids": ids.split(",") if ids else None,
         "bbox": list(map(float, bbox.split(","))) if bbox else None,
         "datetime": datetime,
-        # "sortby": sortby,
-        # "filter": query,
-        # "filter-lang": filter_lang,
+        "sortby": sortby,
+        "filter": query,
+        "filter-lang": filter_lang,
         "limit": limit or 10,
         "max_items": max_items or 100,
+    }
+
+
+def STACSearchParams(
+    request: Request,
+    collection_id: Annotated[
+        str,
+        Path(description="STAC Collection Identifier"),
+    ],
+    ids: Annotated[Optional[str], Query(description="Filter by Ids.")] = None,
+    query_params=Depends(STACQueryParams),
+) -> Dict:
+    """Dependency to construct STAC API Search Query."""
+    return {
+        "collections": [collection_id],
+        "ids": ids.split(",") if ids else None,
+        **query_params,
     }
