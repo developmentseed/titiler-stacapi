@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-02-25
+
+* use only cql2-text for GET request filter parameter (author @jverrydt, https://github.com/developmentseed/titiler-stacapi/pull/30)
+
 ## [0.3.0] - 2025-02-24
 
 * Add STAC filter / sort search parameters in `/collections` endpoints (author @jverrydt, https://github.com/developmentseed/titiler-stacapi/pull/29)
