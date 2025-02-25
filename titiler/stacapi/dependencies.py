@@ -167,13 +167,13 @@ def STACQueryParams(
     query: Annotated[
         Optional[str], Query(description="CQL2 Filter", alias="filter")
     ] = None,
-    filter_lang: Annotated[
-        Optional[Literal["cql2-text", "cql2-json"]],
-        Query(
-            description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
-            alias="filter-lang",
-        ),
-    ] = None,
+    # filter_lang: Annotated[
+    #     Optional[Literal["cql2-text", "cql2-json"]],
+    #     Query(
+    #         description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
+    #         alias="filter-lang",
+    #     ),
+    # ] = None,
     limit: Annotated[
         Optional[int],
         Query(description="Limit the number of items per page search (default: 10)"),
@@ -185,11 +185,12 @@ def STACQueryParams(
 ) -> Dict:
     """Dependency to construct STAC API Search Query."""
     return {
+        "method": "GET" if query else "POST",
         "bbox": list(map(float, bbox.split(","))) if bbox else None,
         "datetime": datetime,
         "sortby": sortby,
         "filter": query,
-        "filter-lang": filter_lang,
+        # "filter_lang": filter_lang,
         "limit": limit or 10,
         "max_items": max_items or 100,
     }
