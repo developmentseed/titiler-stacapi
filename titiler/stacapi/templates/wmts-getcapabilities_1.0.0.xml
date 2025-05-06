@@ -57,12 +57,13 @@
   <Contents>
   {% for layer in layers %}
     <Layer>
-      <ows:Title>{{ layer.title or layer.id }}</ows:Title>
+      <ows:Title>{{ layer.id }}</ows:Title>
+      <ows:Abstract>{{ layer.title }}</ows:Abstract>
       <ows:WGS84BoundingBox>
         <ows:LowerCorner>{{ layer.bbox[0] }} {{ layer.bbox[1] }}</ows:LowerCorner>
         <ows:UpperCorner>{{ layer.bbox[2] }} {{ layer.bbox[3] }}</ows:UpperCorner>
       </ows:WGS84BoundingBox>
-      <ows:Identifier>{{ layer.id or layer.title }}</ows:Identifier>
+      <ows:Identifier>{{ layer.id }}</ows:Identifier>
       <Style isDefault="true">
         <ows:Title>default</ows:Title>
         <ows:Identifier>default</ows:Identifier>
