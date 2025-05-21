@@ -586,15 +586,17 @@ def get_layer_from_collections(  # noqa: C901
                 tilematrixsets = render.pop("tilematrixsets", None)
                 output_format = render.pop("format", None)
                 aggregation = render.pop("aggregation", None)
+                title = render.pop("title", None)
 
                 _ = render.pop("minmax_zoom", None)  # Not Used
                 _ = render.pop("title", None)  # Not Used
 
                 # see https://github.com/developmentseed/eoAPI-vito/issues/9#issuecomment-2034025021
-                render_title = f"{collection.id}_{name}"
+                render_id = f"{collection.id}_{name}"
                 layer = {
-                    "id": render_title,
+                    "id": render_id,
                     "collection": collection.id,
+                    "title": title,
                     "bbox": [-180, -90, 180, 90],
                     "style": "default",
                     "render": render,
@@ -707,9 +709,10 @@ def get_layer_from_collections(  # noqa: C901
                 )
                 layer["query_string"] = str(qs)
 
-                layers[render_title] = LayerDict(
+                layers[render_id] = LayerDict(
                     id=layer["id"],
                     collection=layer["collection"],
+                    title=layer.get("title"),
                     bbox=layer["bbox"],
                     format=layer.get("format"),
                     style=layer["style"],

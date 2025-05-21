@@ -114,6 +114,7 @@ class LayerDict(TypedDict, total=False):
 
     id: str
     collection: str
+    title: Optional[str]
     bbox: List[float]
     format: Optional[str]
     style: str

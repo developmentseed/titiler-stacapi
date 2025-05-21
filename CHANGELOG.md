@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2025-05-19
+
+* Align ows:Title, Identifier and Abstract in WMTS GetCapabilities (author @jverrydt, https://github.com/developmentseed/titiler-stacapi/pull/31)
+
 ## [0.3.1] - 2025-02-25
 
 * use only cql2-text for GET request filter parameter (author @jverrydt, https://github.com/developmentseed/titiler-stacapi/pull/30)
