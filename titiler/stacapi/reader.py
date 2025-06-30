@@ -25,8 +25,6 @@ class STACReader(stac.STACReader):
 
     """
 
-    input: pystac.Item = attr.ib()
-
     tms: TileMatrixSet = attr.ib(default=WEB_MERCATOR_TMS)
     minzoom: int = attr.ib()
     maxzoom: int = attr.ib()

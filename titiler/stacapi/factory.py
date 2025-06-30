@@ -4,13 +4,13 @@ import datetime as python_datetime
 import json
 import os
 from copy import copy
-from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Literal, Optional, Type
 from urllib.parse import urlencode
 
 import jinja2
 import rasterio
+from attrs import define, field
 from cachetools import TTLCache, cached
 from cachetools.keys import hashkey
 from cogeo_mosaic.backends import BaseBackend
@@ -38,7 +38,7 @@ from titiler.core.dependencies import (
     DefaultDependency,
     TileParams,
 )
-from titiler.core.factory import BaseTilerFactory, img_endpoint_params
+from titiler.core.factory import TilerFactory, img_endpoint_params
 from titiler.core.models.mapbox import TileJSON
 from titiler.core.resources.enums import ImageType, MediaType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse, XMLResponse
@@ -95,17 +95,17 @@ def get_dependency_params(*, dependency: Callable, query_params: Dict) -> Any:
     return
 
 
-@dataclass
-class MosaicTilerFactory(BaseTilerFactory):
+@define(kw_only=True)
+class MosaicTilerFactory(TilerFactory):
     """Custom MosaicTiler for STACAPI Mosaic Backend."""
 
     path_dependency: Callable[..., APIParams] = STACApiParams
 
     search_dependency: Callable[..., Dict] = STACSearchParams
 
-    # In this factory, `reader` should be a Mosaic Backend
+    # In this factory, `backend` should be a Mosaic Backend
     # https://developmentseed.org/cogeo-mosaic/advanced/backends/
-    reader: Type[BaseBackend] = STACAPIBackend
+    backend: Type[BaseBackend] = STACAPIBackend
 
     # Because the endpoints should work with STAC Items,
     # the `layer_dependency` define which query parameters are mandatory/optional to `display` images
@@ -123,6 +123,8 @@ class MosaicTilerFactory(BaseTilerFactory):
     add_viewer: bool = False
 
     templates: Jinja2Templates = DEFAULT_TEMPLATES
+
+    optional_headers: List[OptionalHeader] = field(factory=list)
 
     def get_base_url(self, request: Request) -> str:
         """return endpoints base url."""
@@ -219,7 +221,7 @@ class MosaicTilerFactory(BaseTilerFactory):
 
             tms = self.supported_tms.get(tileMatrixSetId)
             with rasterio.Env(**env):
-                with self.reader(
+                with self.backend(
                     url=api_params["api_url"],
                     headers=api_params.get("headers", {}),
                     tms=tms,
@@ -725,15 +727,15 @@ def get_layer_from_collections(  # noqa: C901
     return layers
 
 
-@dataclass
-class OGCWMTSFactory(BaseTilerFactory):
+@define(kw_only=True)
+class OGCWMTSFactory(TilerFactory):
     """Create /wmts endpoint"""
 
     path_dependency: Callable[..., APIParams] = STACApiParams
 
     # In this factory, `reader` should be a Mosaic Backend
     # https://developmentseed.org/cogeo-mosaic/advanced/backends/
-    reader: Type[BaseBackend] = STACAPIBackend
+    backend: Type[BaseBackend] = STACAPIBackend
 
     query_dependency: Callable[..., Any] = STACQueryParams
 
@@ -751,7 +753,7 @@ class OGCWMTSFactory(BaseTilerFactory):
     backend_dependency: Type[DefaultDependency] = DefaultDependency
 
     supported_format: List[str] = field(
-        default_factory=lambda: [
+        factory=lambda: [
             "image/png",
             "image/jpeg",
             "image/jpg",
@@ -761,7 +763,7 @@ class OGCWMTSFactory(BaseTilerFactory):
         ]
     )
 
-    supported_version: List[str] = field(default_factory=lambda: ["1.0.0"])
+    supported_version: List[str] = field(factory=lambda: ["1.0.0"])
 
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
@@ -799,7 +801,7 @@ class OGCWMTSFactory(BaseTilerFactory):
         y = int(req["tilerow"])
 
         tms = self.supported_tms.get(tms_id)
-        with self.reader(
+        with self.backend(
             url=stac_url,
             headers=headers,
             tms=tms,
@@ -1382,7 +1384,7 @@ class OGCWMTSFactory(BaseTilerFactory):
 
             tms = self.supported_tms.get(tileMatrixSetId)
             with rasterio.Env(**env):
-                with self.reader(
+                with self.backend(
                     url=api_params["api_url"],
                     headers=api_params.get("headers", {}),
                     tms=tms,
