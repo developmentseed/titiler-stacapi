@@ -225,8 +225,8 @@ class MosaicTilerFactory(TilerFactory):
                     url=api_params["api_url"],
                     headers=api_params.get("headers", {}),
                     tms=tms,
-                    reader_options={**reader_params},
-                    **backend_params,
+                    reader_options={**reader_params.as_dict()},
+                    **backend_params.as_dict(),
                 ) as src_dst:
                     if MOSAIC_STRICT_ZOOM and (
                         z < src_dst.minzoom or z > src_dst.maxzoom
@@ -244,9 +244,9 @@ class MosaicTilerFactory(TilerFactory):
                         tilesize=scale * 256,
                         pixel_selection=pixel_selection,
                         threads=MOSAIC_THREADS,
-                        **tile_params,
-                        **layer_params,
-                        **dataset_params,
+                        **tile_params.as_dict(),
+                        **layer_params.as_dict(),
+                        **dataset_params.as_dict(),
                     )
 
             if post_process:
@@ -262,7 +262,7 @@ class MosaicTilerFactory(TilerFactory):
                 image,
                 output_format=format,
                 colormap=colormap,
-                **render_params,
+                **render_params.as_dict(),
             )
 
             headers: Dict[str, str] = {}
@@ -865,9 +865,9 @@ class OGCWMTSFactory(TilerFactory):
                 search_query=search_query,
                 pixel_selection=pixel_selection,
                 threads=MOSAIC_THREADS,
-                **tile_params,
-                **layer_params,
-                **dataset_params,
+                **tile_params.as_dict(),
+                **layer_params.as_dict(),
+                **dataset_params.as_dict(),
             )
 
             if post_process := get_dependency_params(
@@ -1388,8 +1388,8 @@ class OGCWMTSFactory(TilerFactory):
                     url=api_params["api_url"],
                     headers=api_params.get("headers", {}),
                     tms=tms,
-                    reader_options={**reader_params},
-                    **backend_params,
+                    reader_options={**reader_params.as_dict()},
+                    **backend_params.as_dict(),
                 ) as src_dst:
                     if MOSAIC_STRICT_ZOOM and (
                         z < src_dst.minzoom or z > src_dst.maxzoom
@@ -1407,9 +1407,9 @@ class OGCWMTSFactory(TilerFactory):
                         tilesize=256,
                         pixel_selection=pixel_selection,
                         threads=MOSAIC_THREADS,
-                        **tile_params,
-                        **layer_params,
-                        **dataset_params,
+                        **tile_params.as_dict(),
+                        **layer_params.as_dict(),
+                        **dataset_params.as_dict(),
                     )
 
             if post_process:
@@ -1425,7 +1425,7 @@ class OGCWMTSFactory(TilerFactory):
                 image,
                 output_format=format,
                 colormap=colormap,
-                **render_params,
+                **render_params.as_dict(),
             )
 
             return Response(content, media_type=media_type)
