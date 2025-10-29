@@ -273,8 +273,10 @@ def test_wmts_gettile(client, get_assets, rio, app):
         },
     )
     assert response.status_code == 200
-    assert (get_assets.call_args.kwargs.get('search_query').get('datetime') ==
-            '2023-01-05T00:00:00Z/2023-01-05T23:59:59Z')
+    assert (
+        get_assets.call_args.kwargs.get("search_query").get("datetime")
+        == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
+    )
 
     response = app.get(
         "/wmts",
@@ -293,8 +295,10 @@ def test_wmts_gettile(client, get_assets, rio, app):
         },
     )
     assert response.status_code == 200
-    assert (get_assets.call_args.kwargs.get('search_query').get('datetime') ==
-            '2023-01-05T00:00:00Z/2023-01-05T23:59:59Z')
+    assert (
+        get_assets.call_args.kwargs.get("search_query").get("datetime")
+        == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
+    )
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
