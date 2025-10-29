@@ -823,7 +823,9 @@ class OGCWMTSFactory(BaseTilerFactory):
                 end_datetime = (
                     start_datetime
                     + python_datetime.timedelta(days=1)
-                    - python_datetime.timedelta(milliseconds=1)
+                    - python_datetime.timedelta(
+                        milliseconds=1
+                    )  # prevent inclusion of following day
                 )
 
                 query_params[
