@@ -23,8 +23,8 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "orjson",
-    "titiler.core>=0.17.0,<0.19",
-    "titiler.mosaic>=0.17.0,<0.19",
+    "titiler.core>=0.19.0,<0.20",
+    "titiler.mosaic>=0.19.0,<0.20",
     "pystac-client",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
@@ -96,7 +96,7 @@ known_third_party = [
 ]
 default_section = "THIRDPARTY"
 
-[tool.ruff]
+[tool.ruff.lint]
 select = [
     "D1",  # pydocstyle errors
     "E",  # pycodestyle errors

@@ -3,8 +3,10 @@
 from typing import Any, Dict, List, Optional
 
 import jinja2
+import morecantile
 from fastapi import Depends, FastAPI
 from fastapi.responses import ORJSONResponse
+from morecantile import TileMatrixSets
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
@@ -84,9 +86,11 @@ if settings.debug:
 
 ###############################################################################
 # OGC WMTS Endpoints
+supported_tms = TileMatrixSets(
+    {"WebMercatorQuad": morecantile.tms.get("WebMercatorQuad")}
+)
 wmts = OGCWMTSFactory(
-    path_dependency=STACApiParams,
-    templates=templates,
+    path_dependency=STACApiParams, templates=templates, supported_tms=supported_tms
 )
 app.include_router(
     wmts.router,
@@ -118,7 +122,6 @@ app.include_router(
 stac = MultiBaseTilerFactory(
     reader=STACReader,
     path_dependency=ItemIdParams,
-    optional_headers=optional_headers,
     router_prefix="/collections/{collection_id}/items/{item_id}",
     add_viewer=True,
 )
