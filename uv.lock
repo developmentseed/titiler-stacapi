@@ -378,7 +378,7 @@ wheels = [
 
 [[package]]
 name = "cogeo-mosaic"
-version = "7.2.0"
+version = "8.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -396,9 +396,9 @@ dependencies = [
     { name = "shapely" },
     { name = "supermorecado" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/2a/4efe88ac2b4e20a6827a9aa89322d81366fc5532c96d2644b5814f41350b/cogeo_mosaic-7.2.0.tar.gz", hash = "sha256:1fa0168f83adcd1065ab49e7c67bc82a507bba895717ac596f8e26b08bc249cb", size = 33458, upload-time = "2024-10-04T13:41:36.995Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/dd/64a58399a87d21828ebda01b28f0b66a962ca71380ff10111269834ef499/cogeo_mosaic-8.2.0.tar.gz", hash = "sha256:5dfc79dde66e8563959d9896124209c12a97edb611d87f255550c14840818bfa", size = 33948, upload-time = "2025-05-06T08:42:39.753Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/c7/dad3d92c8306200c20b4c02cbde636e23950081bb0731f6e4b3e059e03e4/cogeo_mosaic-7.2.0-py3-none-any.whl", hash = "sha256:ed63cb8f8cbc02fafd27bc30ca41956319ece55012629483b274832b72d2802a", size = 40123, upload-time = "2024-10-04T13:41:34.923Z" },
+    { url = "https://files.pythonhosted.org/packages/98/e0/2a8446c97c8dc190cd627eaecd476b5b3a872398c359e32e8316ec1a4d62/cogeo_mosaic-8.2.0-py3-none-any.whl", hash = "sha256:b943cd21e9a8b68135553c5484fb88dd065a23e24349430a39eb5e6487cf11e5", size = 40477, upload-time = "2025-05-06T08:42:38.64Z" },
 ]
 
 [[package]]
@@ -2208,7 +2208,7 @@ wheels = [
 
 [[package]]
 name = "rio-tiler"
-version = "6.8.0"
+version = "7.9.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -2221,10 +2221,11 @@ dependencies = [
     { name = "pydantic" },
     { name = "pystac" },
     { name = "rasterio" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/23/ca11dbead89d003383cdfc0247bb6072856206e3c6c1ae464785e64e62ed/rio_tiler-6.8.0.tar.gz", hash = "sha256:e52bd4dc5f984c707d3b0907c91b99c347f646bc017ad73dd888d156284ddfc7", size = 170562, upload-time = "2024-10-23T11:46:22.401Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/1b/684dd2478fdbf69befa7518936639c37c9fa1694fd75cca5c0430a2ab542/rio_tiler-7.9.2.tar.gz", hash = "sha256:55f96adcffcf67825c83a9906085b4d5b740139ec66432949a0e4c0b4ea6916b", size = 175772, upload-time = "2025-10-09T11:34:12.843Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/e9/eddfa5c6e1222fb2870211bb9e4bbd9527ee5c02ed89df31f73b3efe5144/rio_tiler-6.8.0-py3-none-any.whl", hash = "sha256:f83cb6242f2a8f2e7d77bcbe157509228230df73914b66d4791f56877b55297b", size = 264255, upload-time = "2024-10-23T11:46:20.508Z" },
+    { url = "https://files.pythonhosted.org/packages/40/8c/cbb6feed404ab0b2883b81349d8642d96047878394e7195d1bacfe36a277/rio_tiler-7.9.2-py3-none-any.whl", hash = "sha256:aeb078e63b59ef1041c99bdd4f776341ee8e940fa57ca2e37bab498738b49b56", size = 269983, upload-time = "2025-10-09T11:34:14.44Z" },
 ]
 
 [[package]]
@@ -2478,7 +2479,7 @@ wheels = [
 
 [[package]]
 name = "titiler-core"
-version = "0.18.10"
+version = "0.19.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
@@ -2492,22 +2493,22 @@ dependencies = [
     { name = "simplejson" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/4b/8588b12b5f9ad0adb201c3f562a348a50103c14efc65137a311b19e5e052/titiler.core-0.18.10.tar.gz", hash = "sha256:342fa935c8d9f876002a28609b93a38baeab24da9d42290a68ee1b23bbe76e35", size = 30143, upload-time = "2024-10-17T21:36:52.94Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3e/02/481c5826a87c3314bc422439679158b721c176fbfdabf733e7147bdac0ba/titiler_core-0.19.3.tar.gz", hash = "sha256:c6baf47387b7135ef09efbe97ed0b070070c6cd79999e9cee6cf4b82b876f8b7", size = 34913, upload-time = "2025-01-09T21:25:39.016Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/e8/ab12514687191e012d497eb9ca6180f5f5cf0c089a912f8b083ed08772e5/titiler.core-0.18.10-py3-none-any.whl", hash = "sha256:84294841308e057eb6b085938989f4d0f2f3cbb882790784803bd100d3695a42", size = 35147, upload-time = "2024-10-17T21:36:51.452Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/ba/7c4019f11b769b77bec5df4820b3a4aa1af88ce07123befe6fd4a739cb3e/titiler_core-0.19.3-py3-none-any.whl", hash = "sha256:d3f5b6c784ad15127ca55fdc243858ac21344d0b1c80951a3f61ed05ff24e493", size = 40284, upload-time = "2025-01-09T21:25:36.728Z" },
 ]
 
 [[package]]
 name = "titiler-mosaic"
-version = "0.18.10"
+version = "0.19.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cogeo-mosaic" },
     { name = "titiler-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/29/ac/f6b3e267cb0e3f6260960f38ef91b14489e31b1d54a6dc6822d39af8b97f/titiler.mosaic-0.18.10.tar.gz", hash = "sha256:b796a763d802b6ceaa75e932094a11182ba41f8db74bd145ed44e3e5e45e6ef1", size = 7710, upload-time = "2024-10-17T21:36:58.255Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/bc/037c348ec5ae3be7b66664e1ff4e85a9121c58d235f44077e7743b6cbc70/titiler_mosaic-0.19.3.tar.gz", hash = "sha256:9e00ad954a28b7610f10b377d376c5b736721992fd5e259284876fa2c6a58bc3", size = 10407, upload-time = "2025-01-09T21:25:54.877Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/74/4bde72f12dbcd68b28d1aa3310b31d096528263fbc27ab0844064cfcc770/titiler.mosaic-0.18.10-py3-none-any.whl", hash = "sha256:138e2f0091fd92bb0289641dc66a2d729893fb9d64205002c44540df6d791c92", size = 8147, upload-time = "2024-10-17T21:36:56.875Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/35/70b5182fffec9778440c56bbb3b13fcc231c3a89697341f2a82b8b717402/titiler_mosaic-0.19.3-py3-none-any.whl", hash = "sha256:f5b669befb6cd65f17fd8eb68d35e911edb977ef6196b1c93bae3d2ade5dfa41", size = 11170, upload-time = "2025-01-09T21:25:52.556Z" },
 ]
 
 [[package]]
@@ -2552,8 +2553,8 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.4,<3.0" },
     { name = "pydantic-settings", specifier = "~=2.0" },
     { name = "pystac-client" },
-    { name = "titiler-core", specifier = ">=0.17.0,<0.19" },
-    { name = "titiler-mosaic", specifier = ">=0.17.0,<0.19" },
+    { name = "titiler-core", specifier = ">=0.19.0,<0.20" },
+    { name = "titiler-mosaic", specifier = ">=0.19.0,<0.20" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.12.0" },
 ]
 provides-extras = ["server"]
