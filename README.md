@@ -9,6 +9,9 @@
   <a href="https://github.com/developmentseed/titiler-stacapi/actions?query=workflow%3ACI" target="_blank">
       <img src="https://github.com/developmentseed/titiler-stacapi/workflows/CI/badge.svg" alt="Test">
   </a>
+  <a href="https://pypi.org/project/titiler-stacapi" target="_blank">
+      <img src="https://img.shields.io/pypi/v/titiler-stacapi?color=%2334D058&label=pypi%20package" alt="Package version">
+  </a>  
   <a href="https://codecov.io/gh/developmentseed/titiler-stacapi" target="_blank">
       <img src="https://codecov.io/gh/developmentseed/titiler-stacapi/branch/main/graph/badge.svg" alt="Coverage">
   </a>
@@ -66,7 +69,7 @@ $ export TITILER_STACAPI_STAC_API_URL=https://api.stac
 $ docker-compose up --build api
 ```
 
-It runs `titiler.stacapi` using Gunicorn web server.
+It runs `titiler.stacapi` using Uvicorn web server.
 
 ### How it works
 

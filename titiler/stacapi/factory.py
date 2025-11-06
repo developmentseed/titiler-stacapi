@@ -584,7 +584,6 @@ def get_layer_from_collections(  # noqa: C901
 
         if "renders" in collection.extra_fields:
             for name, render in collection.extra_fields["renders"].items():
-
                 tilematrixsets = render.pop("tilematrixsets", None)
                 output_format = render.pop("format", None)
                 aggregation = render.pop("aggregation", None)
@@ -813,7 +812,7 @@ class OGCWMTSFactory(TilerFactory):
                 )
 
             ###########################################################
-            # STAC Query parameter provided by the the render extension and QueryParameters
+            # STAC Query parameter provided by the render extension and QueryParameters
             ###########################################################
             query_params = copy(layer.get("render")) or {}
 
@@ -822,11 +821,17 @@ class OGCWMTSFactory(TilerFactory):
                     req_time,
                     "%Y-%m-%d",
                 ).replace(tzinfo=python_datetime.timezone.utc)
-                end_datetime = start_datetime + python_datetime.timedelta(days=1)
+                end_datetime = (
+                    start_datetime
+                    + python_datetime.timedelta(days=1)
+                    - python_datetime.timedelta(
+                        milliseconds=1
+                    )  # prevent inclusion of following day
+                )
 
-                query_params[
-                    "datetime"
-                ] = f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+                query_params["datetime"] = (
+                    f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+                )
 
             if "color_formula" in req:
                 query_params["color_formula"] = req["color_formula"]
