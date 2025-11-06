@@ -133,7 +133,7 @@ jobs:
         with:
           platforms: linux/amd64
           context: .
-          file: dockerfiles/Dockerfile
+          file: Dockerfile
           push: true
           tags: |
             ghcr.io/developmentseed/titiler-stacapi:latest
@@ -145,7 +145,7 @@ jobs:
         with:
           platforms: linux/amd64
           context: .
-          file: dockerfiles/Dockerfile
+          file: Dockerfile
           push: true
           tags: |
             ghcr.io/developmentseed/titiler-stacapi:${{ steps.tag.outputs.version }}
