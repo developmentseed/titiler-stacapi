@@ -2,7 +2,7 @@
 name = "titiler-stacapi"
 description = "Connect titiler to STAC APIs."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11,<3.14"
 license = {file = "LICENSE"}
 authors = [
     {name = "Vincent Sarago", email = "vincent@developmentseed.com"},
@@ -15,13 +15,12 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: GIS",
 ]
+dynamic = ["version"]
 dependencies = [
     "orjson",
     "titiler.core>=0.17.0,<0.19",
@@ -30,19 +29,28 @@ dependencies = [
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
 ]
-dynamic = ["version"]
-
 [project.optional-dependencies]
+server = [
+    "uvicorn[standard]>=0.12.0",
+]
+
+[dependency-groups]
 dev = [
     "pre-commit",
     "bump-my-version",
-]
-test = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
     "httpx",
     "owslib",
+]
+docs = [
+    "black>=23.10.1",
+    "mkdocs>=1.4.3",
+    "mkdocs-jupyter>=0.24.5",
+    "mkdocs-material[imaging]>=9.5",
+    "griffe-inherited-docstrings>=1.0.0",
+    "mkdocstrings[python]>=0.25.1",
 ]
 
 [project.urls]
@@ -52,17 +60,18 @@ Issues = "https://github.com/developmentseed/titiler-stacapi/issues"
 Source = "https://github.com/developmentseed/titiler-stacapi"
 Changelog = "https://developmentseed.org/titiler-stacapi/release-notes/"
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
-[tool.pdm.version]
-source = "file"
+[tool.hatch.version]
 path = "titiler/stacapi/__init__.py"
 
-[tool.pdm.build]
-includes = ["titiler/stacapi"]
-excludes = ["tests/", "**/.mypy_cache", "**/.DS_Store"]
+[tool.hatch.build.targets.sdist]
+only-include = ["titiler"]
+
+[tool.hatch.build.targets.wheel]
+only-include = ["titiler"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.coverage.run]
 branch = true

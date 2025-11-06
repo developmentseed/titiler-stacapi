@@ -1,6 +1,5 @@
 """TiTiler+stacapi FastAPI application."""
 
-
 from typing import Any, Dict, List, Optional
 
 import jinja2

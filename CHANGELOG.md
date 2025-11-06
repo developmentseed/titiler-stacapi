@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+* switch to `uv` for development
+* switch to `hatch` for python package build-system
+* remove `titiler` metapackage **breaking change**
+* add support for python version 3.13
+* bump minimum python version to 3.11
+* update docker image to python:3.13
+
 ## [0.3.3] - 2025-11-06
 
 * fix single date query to only select one day (author @wschoors, https://github.com/developmentseed/titiler-stacapi/pull/34)

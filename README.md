@@ -69,7 +69,7 @@ $ export TITILER_STACAPI_STAC_API_URL=https://api.stac
 $ docker-compose up --build api
 ```
 
-It runs `titiler.stacapi` using Gunicorn web server.
+It runs `titiler.stacapi` using Uvicorn web server.
 
 ### How it works
 
