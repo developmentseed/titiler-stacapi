@@ -811,7 +811,7 @@ class OGCWMTSFactory(BaseTilerFactory):
                 )
 
             ###########################################################
-            # STAC Query parameter provided by the the render extension and QueryParameters
+            # STAC Query parameter provided by the render extension and QueryParameters
             ###########################################################
             query_params = copy(layer.get("render")) or {}
 
@@ -820,7 +820,13 @@ class OGCWMTSFactory(BaseTilerFactory):
                     req_time,
                     "%Y-%m-%d",
                 ).replace(tzinfo=python_datetime.timezone.utc)
-                end_datetime = start_datetime + python_datetime.timedelta(days=1)
+                end_datetime = (
+                    start_datetime
+                    + python_datetime.timedelta(days=1)
+                    - python_datetime.timedelta(
+                        milliseconds=1
+                    )  # prevent inclusion of following day
+                )
 
                 query_params[
                     "datetime"
