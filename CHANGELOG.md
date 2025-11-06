@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2025-11-06
+
+* fix single date query to only select one day (author @wschoors, https://github.com/developmentseed/titiler-stacapi/pull/34)
+
 ## [0.3.2] - 2025-05-19
 
 * Align ows:Title, Identifier and Abstract in WMTS GetCapabilities (author @jverrydt, https://github.com/developmentseed/titiler-stacapi/pull/31)
