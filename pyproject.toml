@@ -1,5 +1,5 @@
 [project]
-name = "titiler.stacapi"
+name = "titiler-stacapi"
 description = "Connect titiler to STAC APIs."
 readme = "README.md"
 requires-python = ">=3.8"
