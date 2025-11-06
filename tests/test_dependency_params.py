@@ -40,7 +40,10 @@ def test_get_params_stacquery():
         "limit": 10,
         "max_items": 100,
     }
-    assert get_dependency_params(dependency=STACQueryParams, query_params=qs,) == {
+    assert get_dependency_params(
+        dependency=STACQueryParams,
+        query_params=qs,
+    ) == {
         "method": "POST",
         "bbox": [1.0, 2.0, 3.0, 4.0],
         "datetime": "2020-01-01/2020-12-31",
@@ -57,7 +60,10 @@ def test_get_params_stacquery():
         "limit": 10,
         "max_items": 100,
     }
-    assert get_dependency_params(dependency=STACQueryParams, query_params=qs,) == {
+    assert get_dependency_params(
+        dependency=STACQueryParams,
+        query_params=qs,
+    ) == {
         "method": "GET",
         "bbox": [1.0, 2.0, 3.0, 4.0],
         "datetime": "2020-01-01/2020-12-31",
