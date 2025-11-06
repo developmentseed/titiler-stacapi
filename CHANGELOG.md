@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-11-06
+
 * switch to `uv` for development
 * switch to `hatch` for python package build-system
 * remove `titiler` metapackage **breaking change**
