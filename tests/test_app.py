@@ -3,23 +3,25 @@
 
 def test_landing(app):
     """Test / endpoint."""
+    name = "TiTiler-STACAPI"
+
     response = app.get("/")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "titiler-stacapi"
+    assert body["title"] == name
     assert body["links"]
 
     response = app.get("/?f=html")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "titiler-stacapi" in response.text
+    assert name in response.text
 
     # Check accept headers
     response = app.get("/", headers={"accept": "text/html"})
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "titiler-stacapi" in response.text
+    assert name in response.text
 
     # accept quality
     response = app.get(
@@ -27,28 +29,28 @@ def test_landing(app):
     )
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "titiler-stacapi" in response.text
+    assert name in response.text
 
     # accept quality but only json is available
     response = app.get("/", headers={"accept": "text/csv;q=1.0, application/json"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "titiler-stacapi"
+    assert body["title"] == name
 
     # accept quality but only json is available
     response = app.get("/", headers={"accept": "text/csv;q=1.0, */*"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "titiler-stacapi"
+    assert body["title"] == name
 
     # Invalid accept, return default
     response = app.get("/", headers={"accept": "text/htm"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "titiler-stacapi"
+    assert body["title"] == name
     assert body["links"]
 
     # make sure `?f=` has priority over headers
@@ -56,14 +58,17 @@ def test_landing(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "titiler-stacapi"
+    assert body["title"] == name
 
 
 def test_docs(app):
     """Test /api endpoint."""
     response = app.get("/api")
     assert response.status_code == 200
-    assert response.headers["content-type"] == "application/json"
+    assert (
+        response.headers["content-type"]
+        == "application/vnd.oai.openapi+json;version=3.0"
+    )
     body = response.json()
     assert body["openapi"]
 

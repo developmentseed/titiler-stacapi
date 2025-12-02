@@ -112,9 +112,9 @@ def test_wmts_getcapabilities(client, app):
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
-@patch("titiler.stacapi.factory.STACAPIBackend.get_assets")
+@patch("titiler.stacapi.backend.ItemSearch")
 @patch("titiler.stacapi.factory.Client")
-def test_wmts_gettile(client, get_assets, rio, app):
+def test_wmts_gettile(client, item_search, rio, app):
     """test STAC items endpoints."""
     rio.open = mock_rasterio_open
 
@@ -125,7 +125,7 @@ def test_wmts_gettile(client, get_assets, rio, app):
         client.open.return_value.get_collections.return_value = collections
 
     with open(item_json, "r") as f:
-        get_assets.return_value = [json.loads(f.read())]
+        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
 
     # missing keys
     response = app.get(
@@ -274,7 +274,7 @@ def test_wmts_gettile(client, get_assets, rio, app):
     )
     assert response.status_code == 200
     assert (
-        get_assets.call_args.kwargs.get("search_query").get("datetime")
+        item_search.call_args.kwargs.get("datetime")
         == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
     )
 
@@ -296,15 +296,15 @@ def test_wmts_gettile(client, get_assets, rio, app):
     )
     assert response.status_code == 200
     assert (
-        get_assets.call_args.kwargs.get("search_query").get("datetime")
+        item_search.call_args.kwargs.get("datetime")
         == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
     )
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
-@patch("titiler.stacapi.factory.STACAPIBackend.get_assets")
+@patch("titiler.stacapi.backend.ItemSearch")
 @patch("titiler.stacapi.factory.Client")
-def test_wmts_gettile_param_override(client, get_assets, rio, app):
+def test_wmts_gettile_param_override(client, item_search, rio, app):
     """test STAC items endpoints."""
     rio.open = mock_rasterio_open
 
@@ -315,7 +315,7 @@ def test_wmts_gettile_param_override(client, get_assets, rio, app):
         client.open.return_value.get_collections.return_value = collections
 
     with open(item_json, "r") as f:
-        get_assets.return_value = [json.loads(f.read())]
+        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
 
     response = app.get(
         "/wmts",
@@ -359,9 +359,9 @@ def test_wmts_gettile_param_override(client, get_assets, rio, app):
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
-@patch("titiler.stacapi.factory.STACAPIBackend.get_assets")
+@patch("titiler.stacapi.backend.ItemSearch")
 @patch("titiler.stacapi.factory.Client")
-def test_wmts_getfeatureinfo(client, get_assets, rio, app):
+def test_wmts_getfeatureinfo(client, item_search, rio, app):
     """test STAC items endpoints."""
     rio.open = mock_rasterio_open
 
@@ -372,7 +372,7 @@ def test_wmts_getfeatureinfo(client, get_assets, rio, app):
         client.open.return_value.get_collections.return_value = collections
 
     with open(item_json, "r") as f:
-        get_assets.return_value = [json.loads(f.read())]
+        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
 
     # missing keys
     response = app.get(
@@ -546,9 +546,9 @@ def test_wmts_getfeatureinfo(client, get_assets, rio, app):
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
-@patch("titiler.stacapi.factory.STACAPIBackend.get_assets")
+@patch("titiler.stacapi.backend.ItemSearch")
 @patch("titiler.stacapi.factory.Client")
-def test_wmts_gettile_REST(client, get_assets, rio, app):
+def test_wmts_gettile_REST(client, item_search, rio, app):
     """test STAC items endpoints."""
     rio.open = mock_rasterio_open
 
@@ -559,7 +559,7 @@ def test_wmts_gettile_REST(client, get_assets, rio, app):
         client.open.return_value.get_collections.return_value = collections
 
     with open(item_json, "r") as f:
-        get_assets.return_value = [json.loads(f.read())]
+        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
 
     # missing keys
     response = app.get(
