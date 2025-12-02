@@ -791,6 +791,23 @@ class OGCWMTSFactory(BaseFactory):
                     add_mask=True,
                 )
 
+                headers: Dict[str, str] = {}
+                if image.bounds is not None:
+                    headers["Content-Bbox"] = ",".join(map(str, image.bounds))
+                if uri := CRS_to_uri(image.crs):
+                    headers["Content-Crs"] = f"<{uri}>"
+
+                if (
+                    OptionalHeader.server_timing in self.optional_headers
+                    and image.metadata.get("timings")
+                ):
+                    headers["Server-Timing"] = ", ".join(
+                        [
+                            f"{name};dur={time}"
+                            for (name, time) in image.metadata["timings"]
+                        ]
+                    )
+
                 return Response(content, media_type=media_type)
 
             ###################################################################
