@@ -46,7 +46,7 @@ def test_get_params_stacquery():
         "ids": None,
         "bbox": [1.0, 2.0, 3.0, 4.0],
         "datetime": "2020-01-01/2020-12-31",
-        "filter_expr": None,
+        "filter": None,
         "filter_lang": "cql2-text",
     }
     assert get_dependency_params(
@@ -74,7 +74,7 @@ def test_get_params_stacquery():
         "ids": ["a", "b", "c"],
         "bbox": [1.0, 2.0, 3.0, 4.0],
         "datetime": "2020-01-01/2020-12-31",
-        "filter_expr": "property=value",
+        "filter": "property=value",
         "filter_lang": "cql2-text",
     }
     assert get_dependency_params(
