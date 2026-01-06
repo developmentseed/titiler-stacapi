@@ -9,7 +9,7 @@ This is a checklist for releasing a new version of **titiler-stacapi**.
 3. Run [`bump-my-version`](https://callowayproject.github.io/bump-my-version/) to update all titiler's module versions: 
 
     ```
-    bump-my-version bump minor --new-version 0.20.0
+    uv --with bump-my-version --isolated bump-my-version bump minor --new-version 0.20.0
     ```
 
 4. Push your release branch, create a PR, and get approval

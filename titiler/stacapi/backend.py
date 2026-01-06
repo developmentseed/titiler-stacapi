@@ -1,7 +1,8 @@
 """titiler-stacapi custom Mosaic Backend and Custom STACReader."""
 
 import json
-from typing import Any, Type
+from threading import Lock
+from typing import Any
 
 import attr
 from cachetools import TTLCache, cached
@@ -26,6 +27,8 @@ cache_config = CacheSettings()
 retry_config = RetrySettings()
 stac_config = STACSettings()
 
+ttl_cache = TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl)  # type: ignore
+
 
 @attr.s
 class STACAPIBackend(BaseBackend):
@@ -39,7 +42,7 @@ class STACAPIBackend(BaseBackend):
     tms: TileMatrixSet = attr.ib(default=WEB_MERCATOR_TMS)
 
     # Use Custom STAC reader (outside init)
-    reader: Type[SimpleSTACReader] = attr.ib(default=SimpleSTACReader)
+    reader: type[SimpleSTACReader] = attr.ib(default=SimpleSTACReader)
     reader_options: dict = attr.ib(factory=dict)
 
     # default values for bounds
@@ -110,7 +113,7 @@ class STACAPIBackend(BaseBackend):
         return self.get_assets(Polygon.from_bounds(xmin, ymin, xmax, ymax), **kwargs)
 
     @cached(  # type: ignore
-        TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
+        ttl_cache,
         key=lambda self, geom, **kwargs: hashkey(
             self.api_params["url"],
             str(geom),
@@ -118,6 +121,7 @@ class STACAPIBackend(BaseBackend):
             json.dumps(self.api_params.get("headers", {})),
             **kwargs,
         ),
+        lock=Lock(),
     )
     def get_assets(
         self,

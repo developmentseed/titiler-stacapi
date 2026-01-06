@@ -23,10 +23,9 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "orjson",
-#    "titiler.core>=1.0,<1.1",
-#    "titiler.mosaic>=1.0,<1.1",
-    "titiler.core @ git+https://github.com/developmentseed/titiler@feature/optional-cogeo-mosaic#egg=titiler.core&subdirectory=src/titiler/core",
-    "titiler.mosaic @ git+https://github.com/developmentseed/titiler@feature/optional-cogeo-mosaic#egg=titiler.mosaic&subdirectory=src/titiler/mosaic",
+    "titiler.core>=1.0.2,<1.1",
+    "titiler.mosaic>=1.0.2,<1.1",
+    "titiler.extensions>=1.0.2,<1.1",
     "pystac-client",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
@@ -39,7 +38,6 @@ server = [
 [dependency-groups]
 dev = [
     "pre-commit",
-    "bump-my-version",
     "pytest",
     "pytest-cov",
     "pytest-asyncio",

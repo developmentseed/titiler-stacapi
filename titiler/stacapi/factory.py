@@ -44,7 +44,7 @@ from titiler.core.dependencies import (
 from titiler.core.factory import BaseFactory, img_endpoint_params
 from titiler.core.resources.enums import ImageType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse
-from titiler.core.utils import render_image
+from titiler.core.utils import render_image, tms_limits
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import (
@@ -58,10 +58,11 @@ from titiler.stacapi.models import FeatureInfo, LayerDict
 from titiler.stacapi.pystac import Client
 from titiler.stacapi.reader import SimpleSTACReader
 from titiler.stacapi.settings import CacheSettings, RetrySettings
-from titiler.stacapi.utils import _tms_limits
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
+
+ttl_cache = TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl)  # type: ignore
 
 MOSAIC_THREADS = int(os.getenv("MOSAIC_CONCURRENCY", MAX_THREADS))
 MOSAIC_STRICT_ZOOM = str(os.getenv("MOSAIC_STRICT_ZOOM", False)).lower() in [
@@ -112,7 +113,7 @@ class WMTSMediaType(str, Enum):
 
 
 @cached(  # type: ignore
-    TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
+    ttl_cache,
     key=lambda api_params, supported_tms: hashkey(
         api_params["url"], json.dumps(api_params.get("headers", {}))
     ),
@@ -140,7 +141,9 @@ def get_layer_from_collections(  # noqa: C901
 
         if "renders" in collection.extra_fields:
             for name, render in collection.extra_fields["renders"].items():
-                tilematrixsets = render.pop("tilematrixsets", None)
+                tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
+                    "tilematrixsets", None
+                )
                 output_format = render.pop("format", None)
                 aggregation = render.pop("aggregation", None)
                 title = render.pop("title", None)
@@ -154,7 +157,7 @@ def get_layer_from_collections(  # noqa: C901
                     "id": render_id,
                     "collection": collection.id,
                     "title": title,
-                    "bbox": [-180, -90, 180, 90],
+                    "bbox": (-180, -90, 180, 90),
                     "style": "default",
                     "render": render,
                 }
@@ -162,38 +165,29 @@ def get_layer_from_collections(  # noqa: C901
                     layer["format"] = output_format
 
                 if spatial_extent:
-                    layer["bbox"] = spatial_extent.bboxes[0]
+                    layer["bbox"] = tuple(spatial_extent.bboxes[0])
 
-                # NB. The WMTS spec is contradictory re. the multiplicity
-                # relationships between Layer and TileMatrixSetLink, and
-                # TileMatrixSetLink and tileMatrixSet (URI).
-                # WMTS only support 1 set of limits for a TileMatrixSet
-                if tilematrixsets:
-                    if len(tilematrixsets) == 1:
-                        layer["tilematrixsets"] = {
-                            tms_id: _tms_limits(
-                                supported_tms.get(tms_id), layer["bbox"], zooms=zooms
-                            )
-                            for tms_id, zooms in tilematrixsets.items()
-                        }
-                    else:
-                        layer["tilematrixsets"] = {
-                            tms_id: None for tms_id, _ in tilematrixsets.items()
-                        }
+                tilematrixsets = tilematrixsets or {
+                    tms_id: None for tms_id in supported_tms.list()
+                }
 
-                else:
-                    tilematrixsets = supported_tms.list()
-                    if len(tilematrixsets) == 1:
-                        layer["tilematrixsets"] = {
-                            tms_id: _tms_limits(
-                                supported_tms.get(tms_id), layer["bbox"]
-                            )
-                            for tms_id in tilematrixsets
-                        }
-                    else:
-                        layer["tilematrixsets"] = {
-                            tms_id: None for tms_id in tilematrixsets
-                        }
+                layer["tilematrixsets"] = {}
+                for tms_id, zooms in tilematrixsets.items():
+                    try:
+                        limits = tms_limits(
+                            supported_tms.get(tms_id),
+                            layer["bbox"],
+                            zooms=zooms,
+                        )
+                        # NOTE: The WMTS spec is contradictory re. the multiplicity
+                        # relationships between Layer and TileMatrixSetLink, and
+                        # TileMatrixSetLink and tileMatrixSet (URI).
+                        # WMTS only support 1 set of limits for a TileMatrixSet
+                        layer["tilematrixsets"][tms_id] = (
+                            limits if len(tilematrixsets) == 1 else None
+                        )
+                    except Exception as e:  # noqa
+                        pass
 
                 if (
                     "cube:dimensions" in collection.extra_fields
@@ -287,7 +281,7 @@ class OGCWMTSFactory(BaseFactory):
     """Create /wmts endpoint"""
 
     backend: Type[STACAPIBackend] = STACAPIBackend
-    # Backend Depencency has the api_params information
+    # Backend Depencency has the api_params informations
     backend_dependency: Type[BackendParams] = BackendParams
 
     dataset_reader: Type[SimpleSTACReader] = SimpleSTACReader
@@ -678,7 +672,7 @@ class OGCWMTSFactory(BaseFactory):
                     detail=f"Invalid 'SERVICE' parameter: {service}. Only 'wmts' is accepted",
                 )
 
-            # Version is mandatory is mandatory in the specification but we default to 1.0.0
+            # Version is mandatory in the specification but we default to 1.0.0
             version = req.get("version", "1.0.0")
             if version is None:
                 raise HTTPException(
@@ -711,7 +705,7 @@ class OGCWMTSFactory(BaseFactory):
                     name=f"wmts-getcapabilities_{version}.xml",
                     context={
                         "request": request,
-                        "layers": [layer for k, layer in layers.items()],
+                        "layers": [layer for _, layer in layers.items()],
                         "service_url": self.url_for(request, "web_map_tile_service"),
                         "tilematrixsets": [
                             self.supported_tms.get(tms)
@@ -871,8 +865,6 @@ class OGCWMTSFactory(BaseFactory):
                 if colormap:
                     image = image.apply_colormap(colormap)
 
-                # output_format = ImageType(WMTSMediaType(req["format"]).name)
-
                 i = int(req["i"])
                 j = int(req["j"])
 
@@ -915,7 +907,7 @@ class OGCWMTSFactory(BaseFactory):
             collectionId: Annotated[
                 str,
                 Path(
-                    description="Layer Identifier",
+                    description="Layer Identifier (Collection ID)",
                     alias="LAYER",
                 ),
             ],
@@ -980,7 +972,7 @@ class OGCWMTSFactory(BaseFactory):
             render_params=Depends(self.render_dependency),
             env=Depends(self.environment_dependency),
         ):
-            """OGC WMTS GetTile (REST encoding)"""
+            """OGC WMTS GetTile (REST encoding) used in WMTS TileURLTemplate."""
             search_query: Search = {"collections": [collectionId], "datetime": timeId}
 
             tms = self.supported_tms.get(tileMatrixSetId)

@@ -11,6 +11,8 @@ from typing import TypedDict, Union
 from geojson_pydantic import Feature, Point
 from pydantic import BaseModel
 
+from titiler.core.utils import TMSLimits
+
 
 class Properties(BaseModel):
     """Model for FeatureInfo properties."""
@@ -38,6 +40,6 @@ class LayerDict(TypedDict, total=False):
     format: str | None
     style: str
     render: dict | None
-    tilematrixsets: dict
+    tilematrixsets: dict[str, list[TMSLimits]]
     time: list[str] | None
     query_string: str

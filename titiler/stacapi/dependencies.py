@@ -37,7 +37,7 @@ class Search(TypedDict, total=False):
     ids: list[str] | None
     bbox: list[float] | None
     datetime: str | None
-    filter_expr: str | dict | None
+    filter: str | dict | None
     filter_lang: Literal["cql2-text", "cql2-json"]
 
 
@@ -162,7 +162,7 @@ Remember to URL encode the CQL2-JSON if using GET""",
         ids=ids.split(",") if ids else None,
         bbox=[float(v) for v in bbox.split(",")] if bbox else None,
         datetime=datetime,
-        filter_expr=filter_expr,
+        filter=filter_expr,
         filter_lang=filter_lang,
     )
 
@@ -238,7 +238,7 @@ Remember to URL encode the CQL2-JSON if using GET""",
         ids=ids.split(",") if ids else None,
         bbox=[float(v) for v in bbox.split(",")] if bbox else None,
         datetime=datetime,
-        filter_expr=filter_expr,
+        filter=filter_expr,
         filter_lang=filter_lang,
     )
 
