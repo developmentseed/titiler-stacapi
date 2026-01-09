@@ -322,11 +322,46 @@ class STACAPIBackend(BaseBackend):
         bbox: BBox,
         dst_crs: Optional[CRS] = None,
         bounds_crs: CRS = WGS84_CRS,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
         search_query: Optional[Dict] = None,
         **kwargs: Any,
-    ) -> Tuple[ImageData, List[str]]:
+    ) -> ImageData:
         """Create an Image from multiple items for a bbox."""
-        raise NotImplementedError
+        timings = []
+
+        with Timer() as t:
+            mosaic_assets = self.assets_for_bbox(
+                bbox[0],
+                bbox[1],
+                bbox[2],
+                bbox[3],
+                bounds_crs,
+                search_query=search_query,
+            )
+
+        timings.append(("search", round(t.elapsed * 1000, 2)))
+
+        if not mosaic_assets:
+            raise NoAssetFoundError(f"No assets found for bbox {bbox}")
+
+        def _reader(item: Dict[str, Any], **kwargs: Any) -> ImageData:
+            with self.reader(item, tms=self.tms, **self.reader_options) as src_dst:
+                return src_dst.part(
+                    bbox=bbox,
+                    width=width,
+                    height=height,
+                    bounds_crs=bounds_crs,
+                    dst_crs=dst_crs,
+                    **kwargs,
+                )
+
+        with Timer() as t:
+            img, used_assets = mosaic_reader(mosaic_assets, _reader, **kwargs)
+
+        timings.append(("mosaicking", round(t.elapsed * 1000, 2)))
+        img.metadata = {**img.metadata, "timings": timings}
+        return img
 
     def feature(
         self,
