@@ -2,7 +2,7 @@
 name = "titiler-stacapi"
 description = "Connect titiler to STAC APIs."
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 authors = [
     {name = "Vincent Sarago", email = "vincent@developmentseed.com"},
@@ -18,13 +18,15 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: GIS",
 ]
 dynamic = ["version"]
 dependencies = [
     "orjson",
-    "titiler.core>=0.19.0,<0.20",
-    "titiler.mosaic>=0.19.0,<0.20",
+    "titiler.core>=1.1,<1.2",
+    "titiler.mosaic>=1.1,<1.2",
+    "titiler.extensions>=1.1,<1.2",
     "pystac-client",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
@@ -37,7 +39,6 @@ server = [
 [dependency-groups]
 dev = [
     "pre-commit",
-    "bump-my-version",
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
@@ -68,6 +69,9 @@ only-include = ["titiler"]
 
 [tool.hatch.build.targets.wheel]
 only-include = ["titiler"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [build-system]
 requires = ["hatchling"]

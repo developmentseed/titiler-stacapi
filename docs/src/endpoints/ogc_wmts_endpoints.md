@@ -48,7 +48,7 @@ Example:
 `:endpoint:/layers/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}`
 
 - PathParams:
-    - **Layer** (str): Layer identifier
+    - **Layer** (str): Layer identifier (collection_id)
     - **Style** (str): Style identifier
     - **Time** (str): TIME Dimension
     - **TileMatrixSet** (str): TileMatrixSet identifier
@@ -59,4 +59,4 @@ Example:
 
 Example:
 
-- `https://myendpoint/MyLayer/default/2023-01-01/WebMercatorQuad/0/0/0.png
+- `https://myendpoint/layers/my-collection/default/2023-01-01/WebMercatorQuad/0/0/0.png`

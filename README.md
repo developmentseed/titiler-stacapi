@@ -38,12 +38,17 @@ python -m pip install -U pip
 python -m pip  install titiler.stacapi
 ```
 
-or from sources and run for development:
+To install from sources and run for development:
+
+We recommand using [`uv`](https://docs.astral.sh/uv) as project manager for development.
+
+See https://docs.astral.sh/uv/getting-started/installation/ for installation 
 
 ```bash
 git clone https://github.com/developmentseed/titiler-stacapi.git
 cd titiler-stacapi
-python -m pip install -e .
+
+uv sync
 ```
 
 ## Launch
@@ -52,12 +57,8 @@ You'll need to have `TITILER_STACAPI_STAC_API_URL` variables set in your environ
 
 ```
 export TITILER_STACAPI_STAC_API_URL=https://api.stac
-```
 
-```
-python -m pip install uvicorn
-
-uvicorn titiler.stacapi.main:app --port 8000
+uv run --extra server uvicorn titiler.stacapi.main:app --port 8000
 ```
 
 ### Using Docker

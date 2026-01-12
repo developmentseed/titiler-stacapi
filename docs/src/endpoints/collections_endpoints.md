@@ -4,10 +4,17 @@
 
 | Method | URL                                                                              | Output                                  | Description
 | ------ | ---------------------------------------------------------------------------------|-----------------------------------------|--------------
-| `GET`  | `/collections/{collection_id}/tiles/{TileMatrixSetId}/{z}/{x}/{y}[@{scale}x][.{format}]` | image/bin                               | Create a web map tile image for a collection and a tile index
-| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/tilejson.json`                           | JSON ([TileJSON][tilejson_model])       | Return a Mapbox TileJSON document
-| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/WMTSCapabilities.xml`                    | XML                                     | return OGC WMTS Get Capabilities
-| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/map`                                     | HTML                                    | simple map viewer
+| `GET`  | `/collections/{collection_id}/info`                                              | JSON                                    | return mosaic's basic info
+| `GET`  | `/collections/{collection_id}/info.geojson`                                      | GeoJSON                                 | return mosaic's basic info as a GeoJSON feature
+| `GET`  | `/collections/{collection_id}/tiles`                                             | JSON                                    | List of OGC Tilesets available
+| `GET`  | `/collections/{collection_id}/tiles/{tileMatrixSetId}`                           | JSON                                    | OGC Tileset metadata
+| `GET`  | `/collections/{collection_id}/tiles/{TileMatrixSetId}/{z}/{x}/{y}[@{scale}x][.{format}]` | image/bin                       | Create a web map tile image for a collection and a tile index
+| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/tilejson.json`                           | JSON ([TileJSON][tilejson_model]) | Return a Mapbox TileJSON document
+| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/map.html`                                | HTML                              | simple map viewer
+| `GET`  | `/collections/{collection_id}/point/{lon},{lat}`                                            | JSON      | return pixel value from a mosaic assets
+| `GET`  | `/collections/{collection_id}/bbox/{minx},{miny},{maxx},{maxy}/assets`                      | JSON      | return list of assets intersecting a bounding box
+| `GET`  | `/collections/{collection_id}/point/{lon},{lat}/assets`                                     | JSON      | return list of assets intersecting a point
+| `GET`  | `/collections/{collection_id}/tiles/{tileMatrixSetId}/{z}/{x}/{y}/assets`                   | JSON      | return list of assets intersecting a XYZ tile
 
 ### Tiles
 
@@ -46,6 +53,9 @@
     - **ids** (str): Comma (',') delimited list of IDS.
     - **bbox** (str): Comma (',') delimited BoundingBox (not used in the search query, but usefull to limit the bbox of the mosaic).
     - **datetime** (str): Datetime filter for the Search Query following `RFC 3339` format (https://github.com/radiantearth/stac-api-spec/blob/v1.0.0/implementation.md#datetime-parameter-handling)
+    - **filter** (str): A CQL2 filter expression for filtering items.
+    - **filter-lang** (str): CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.
+    - **sortby** (str): An array of property names, prefixed by either '+' for ascending or '-' for descending. If no prefix is provided, '+' is assumed.
     - **limit** (int): The maximum number of results to return (page size). Defaults to 10.
     - **max_items** (int): The maximum number of items to used in a mosaic. Defaults to 100.
 
@@ -94,6 +104,9 @@ Example:
     - **ids** (str): Comma (',') delimited list of IDS.
     - **bbox** (str): Comma (',') delimited BoundingBox (not used in the search query, but usefull to limit the bbox of the mosaic).
     - **datetime** (str): Datetime filter for the Search Query following `RFC 3339` format (https://github.com/radiantearth/stac-api-spec/blob/v1.0.0/implementation.md#datetime-parameter-handling)
+    - **filter** (str): A CQL2 filter expression for filtering items.
+    - **filter-lang** (str): CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.
+    - **sortby** (str): An array of property names, prefixed by either '+' for ascending or '-' for descending. If no prefix is provided, '+' is assumed.
     - **limit** (int): The maximum number of results to return (page size). Defaults to 10.
     - **max_items** (int): The maximum number of items to used in a mosaic. Defaults to 100.
 
@@ -105,30 +118,5 @@ Example:
 - `https://myendpoint/collections/my-collection/WebMercatorQuad/tilejson.json?assets=B01`
 - `https://myendpoint/collections/my-collection/WebMercatorQuad/tilejson.json?assets=B01&tile_format=png`
 - `https://myendpoint/collections/my-collection/WorldCRS84Quad/tilejson.json?assets=B01&tile_scale=2`
-
-
-### WMTS
-
-`:endpoint:/collections/{collection_id}/{TileMatrixSetId}/WMTSCapabilities.xml`
-
-- PathParams:
-    - **collection_id**: STAC Collection Identifier.
-    - **TileMatrixSetId**: TileMatrixSet name (e.g `WebMercatorQuad`).
-
-- QueryParams:
-    - **tile_format**: Output image format, default is set to PNG.
-    - **tile_scale**: Tile size scale, default is set to 1 (256x256). OPTIONAL
-    - **minzoom**: Overwrite default minzoom. OPTIONAL
-    - **maxzoom**: Overwrite default maxzoom. OPTIONAL
-
-!!! important
-    additional query-parameters will be forwarded to the `tile` URL. If no `defaults` mosaic metadata, **assets** OR **expression** will be required
-
-Example:
-
-- `https://myendpoint/collections/my-collection/WebMercatorQuad/WMTSCapabilities.xml?assets=B01`
-- `https://myendpoint/collections/my-collection/WebMercatorQuad/WMTSCapabilities.xml?assets=B01&tile_format=png`
-- `https://myendpoint/collections/my-collection/WorldCRS84Quad/WMTSCapabilities.xml?assets=B01&tile_scale=2`
-
 
 [tilejson_model]: https://github.com/developmentseed/titiler/blob/2335048a407f17127099cbbc6c14e1328852d619/src/titiler/core/titiler/core/models/mapbox.py#L16-L38

@@ -4,17 +4,17 @@ The `Item` endpoints are created using TiTiler's [MultiBaseTilerFactory](https:/
 
 | Method | URL                                                                  | Output                                           | Description
 | ------ | -------------------------------------------------------------------- |------------------------------------------------- |--------------
-| `GET`  | `/collections/{collection_id}/items/{item_id}/bounds`                                                       | JSON ([Bounds][bounds_model])                    | return dataset's bounds
-| `GET`  | `/collections/{collection_id}/items/{item_id}/assets`                                                       | JSON                                             | return the list of available assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}/info`                                                         | JSON ([Info][multiinfo_model])                   | return assets basic info
 | `GET`  | `/collections/{collection_id}/items/{item_id}/info.geojson`                                                 | GeoJSON ([InfoGeoJSON][multiinfo_geojson_model]) | return assets basic info as a GeoJSON feature
+| `GET`  | `/collections/{collection_id}/items/{item_id}/assets`                                                       | JSON                                             | return the list of available assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}/asset_statistics`                                             | JSON ([Statistics][multistats_model])            | return per asset statistics
 | `GET`  | `/collections/{collection_id}/items/{item_id}/statistics`                                                   | JSON ([Statistics][stats_model])                 | return assets statistics (merged)
 | `POST` | `/collections/{collection_id}/items/{item_id}/statistics`                                                   | GeoJSON ([Statistics][multistats_geojson_model]) | return assets statistics for a GeoJSON (merged)
+| `GET`  | `/collections/{collection_id}/items/{item_id}/tiles`                                                        | JSON                                             | List of OGC Tilesets available
+| `GET`  | `/collections/{collection_id}/items/{item_id}/tiles/{tileMatrixSetId}`                                      | JSON                                             | OGC Tileset metadata
 | `GET`  | `/collections/{collection_id}/items/{item_id}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}[@{scale}x][.{format}]`  | image/bin                                        | create a web map tile image from assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}[/{TileMatrixSetId}]/tilejson.json`                            | JSON ([TileJSON][tilejson_model])                | return a Mapbox TileJSON document
-| `GET`  | `/collections/{collection_id}/items/{item_id}[/{TileMatrixSetId}]/WMTSCapabilities.xml`                     | XML                                              | return OGC WMTS Get Capabilities
-| `GET`  | `/collections/{collection_id}/items/{item_id}[/{TileMatrixSetId}]/map`                                      | HTML                                             | simple map viewer
+| `GET`  | `/collections/{collection_id}/items/{item_id}[/{TileMatrixSetId}]/map.html`                                 | HTML                                             | simple map viewer
 | `GET`  | `/collections/{collection_id}/items/{item_id}/point/{lon},{lat}`                                            | JSON ([Point][multipoint_model])                 | return pixel values from assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}/preview[.{format}]`                                           | image/bin                                        | create a preview image from assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}/bbox/{minx},{miny},{maxx},{maxy}[/{width}x{height}].{format}` | image/bin                                        | create an image from part of assets
@@ -264,18 +264,6 @@ Example:
 - `https://myendpoint/collections/mycollection/items/oneitem/tilejson.json?assets=B01`
 - `https://myendpoint/collections/mycollection/items/oneitem/tilejson.json?assets=B01&tile_format=png`
 - `https://myendpoint/collections/mycollection/items/oneitem/WorldCRS84Quad/tilejson.json?tile_scale=2&expression=B01/B02&asset_as_band=True`
-
-### Bounds
-
-`:endpoint:/collections/{collection_id}/items/{item_id}/bounds` - Return the bounds of the STAC item.
-
-- PathParams:
-    - **collection_id** (str): STAC Collection Identifier.
-    - **item_id** (str): STAC Item Identifier.
-
-Example:
-
-- `https://myendpoint/collections/mycollection/items/oneitem/bounds`
 
 
 ### Info

@@ -2,11 +2,12 @@
 
 ## [Unreleased]
 
+* update titiler requirements to `>=1.0,<1.1`
+
 ## [0.4.0] - 2025-11-06
 
 * switch to `uv` for development
 * switch to `hatch` for python package build-system
-* remove `titiler` metapackage **breaking change**
 * add support for python version 3.13
 * bump minimum python version to 3.11
 * update docker image to python:3.13
