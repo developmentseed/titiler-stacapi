@@ -1,6 +1,6 @@
 """TiTiler+stacapi FastAPI application."""
 
-from typing import Any, List, Literal, Optional
+from typing import Annotated, Any, Literal
 
 import httpx
 import jinja2
@@ -12,7 +12,6 @@ from morecantile import TileMatrixSets
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
-from typing_extensions import Annotated
 
 from titiler.core import __version__ as titiler_version
 from titiler.core.dependencies import AssetsBidxExprParams
@@ -27,7 +26,9 @@ from titiler.core.middleware import CacheControlMiddleware, LoggerMiddleware
 from titiler.core.models.OGC import Conformance, Landing
 from titiler.core.resources.enums import OptionalHeader
 from titiler.core.utils import accept_media_type, create_html_response, update_openapi
+from titiler.extensions import wmtsExtension
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
+from titiler.mosaic.extensions.wmts import wmtsExtension as wmtsExtensionMosaic
 from titiler.mosaic.factory import MosaicTilerFactory
 from titiler.stacapi import __version__ as titiler_stacapi_version
 from titiler.stacapi.backend import STACAPIBackend
@@ -47,7 +48,7 @@ settings = ApiSettings()
 stacapi_config = STACAPISettings()
 
 # custom template directory
-templates_location: List[Any] = (
+templates_location: list[Any] = (
     [jinja2.FileSystemLoader(settings.template_directory)]
     if settings.template_directory
     else []
@@ -146,6 +147,11 @@ collection = MosaicTilerFactory(
     layer_dependency=AssetsBidxExprParams,
     router_prefix="/collections/{collection_id}",
     add_viewer=True,
+    extensions=[
+        wmtsExtensionMosaic(
+            get_renders=lambda obj: obj.info().renders or {}  # type: ignore [attr-defined]
+        ),
+    ],
     templates=templates,
 )
 app.include_router(
@@ -164,6 +170,9 @@ stac = MultiBaseTilerFactory(
     path_dependency=ItemIdParams,
     router_prefix="/collections/{collection_id}/items/{item_id}",
     add_viewer=True,
+    extensions=[
+        wmtsExtension(get_renders=lambda obj: obj.item.properties.get("renders", {})),  # type: ignore [attr-defined]
+    ],
     templates=templates,
 )
 app.include_router(
@@ -214,7 +223,7 @@ APP_CONFORMS_TO.update(cmaps.conforms_to)
 def landing(
     request: Request,
     f: Annotated[
-        Optional[Literal["html", "json"]],
+        Literal["html", "json"] | None,
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
@@ -326,7 +335,7 @@ def landing(
 def conformance(
     request: Request,
     f: Annotated[
-        Optional[Literal["html", "json"]],
+        Literal["html", "json"] | None,
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),

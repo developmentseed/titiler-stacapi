@@ -10,13 +10,14 @@ from cachetools.keys import hashkey
 from geojson_pydantic import Point, Polygon
 from geojson_pydantic.geometries import Geometry
 from morecantile import Tile, TileMatrixSet
-from pystac_client import ItemSearch
+from pystac_client import Client, ItemSearch
 from pystac_client.stac_api_io import StacApiIO
 from rasterio.crs import CRS
 from rasterio.warp import transform, transform_bounds
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
-from rio_tiler.mosaic.backend import BaseBackend
+from rio_tiler.mosaic.backend import BaseBackend, MosaicInfo
 from rio_tiler.types import BBox
+from rio_tiler.utils import CRS_to_uri
 from urllib3 import Retry
 
 from titiler.stacapi.dependencies import APIParams, Search
@@ -161,3 +162,38 @@ class STACAPIBackend(BaseBackend):
             f"{self.api_params['url']}/search", stac_io=stac_api_io, **params
         )
         return list(results.items_as_dicts())
+
+    @cached(  # type: ignore
+        ttl_cache,
+        key=lambda self: hashkey(
+            self.api_params["url"],
+            json.dumps(self.input),
+            json.dumps(self.api_params.get("headers", {})),
+        ),
+        lock=Lock(),
+    )
+    def info(self) -> MosaicInfo:  # type: ignore
+        """Mosaic info."""
+        renders = {}
+        bounds = self.bounds
+        crs = self.crs
+
+        if collections := self.input.get("collections", []):
+            if len(collections) == 1:
+                stac_api_io = StacApiIO(
+                    max_retries=Retry(
+                        total=retry_config.retry,
+                        backoff_factor=retry_config.retry_factor,
+                    ),
+                    headers=self.api_params.get("headers", {}),
+                )
+                client = Client.open(f"{self.api_params['url']}", stac_io=stac_api_io)
+                collection = client.get_collection(collections[0])
+                if collection.extent.spatial:
+                    bounds = tuple(collection.extent.spatial.bboxes[0])
+                    crs = WGS84_CRS
+                renders = collection.extra_fields.get("renders", {})
+
+        return MosaicInfo(
+            bounds=bounds, crs=CRS_to_uri(crs) or crs.to_wkt(), renders=renders
+        )
