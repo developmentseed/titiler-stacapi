@@ -7,8 +7,12 @@ import jinja2
 import morecantile
 import rasterio
 from fastapi import FastAPI, Query
+from fastapi import __version__ as fastapi_version
 from fastapi.responses import ORJSONResponse
 from morecantile import TileMatrixSets
+from pydantic import __version__ as pydantic_version
+from rio_tiler import __version__ as rio_tiler_version
+from starlette import __version__ as starlette_version
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
@@ -375,7 +379,7 @@ def conformance(
 ###############################################################################
 # Health Check Endpoint
 @app.get("/healthz", description="Health Check", tags=["Health Check"])
-def ping() -> dict:
+def ping(request: Request) -> dict:
     """Health check."""
     try:
         resp = httpx.get(app.state.stac_url)
@@ -383,49 +387,22 @@ def ping() -> dict:
     except:  # noqa
         api_online = False
 
-    return {
+    data = {
         "stac-api_online": api_online,
         "versions": {
             "titiler": titiler_version,
             "titiler.stacapi": titiler_stacapi_version,
             "rasterio": rasterio.__version__,
+            "rio-tiler": rio_tiler_version,
             "gdal": rasterio.__gdal_version__,
             "proj": rasterio.__proj_version__,
-            "geos": rasterio.__geos_version__,
+            "fastapi": fastapi_version,
+            "starlette": starlette_version,
+            "pydantic": pydantic_version,
         },
     }
 
+    if settings.debug:
+        data["url"] = request.app.state.stac_url
 
-if settings.debug:
-
-    @app.get("/debug", include_in_schema=False, tags=["DEBUG"])
-    def debug(request: Request) -> dict:
-        """APP Info."""
-
-        import rasterio
-        from fastapi import __version__ as fastapi_version
-        from pydantic import __version__ as pydantic_version
-        from rio_tiler import __version__ as rio_tiler_version
-        from starlette import __version__ as starlette_version
-
-        try:
-            resp = httpx.get(app.state.stac_url)
-            api_online = True if resp.status_code == 200 else False
-        except:  # noqa
-            api_online = False
-
-        return {
-            "url": request.app.state.stac_url,
-            "stac-api_online": api_online,
-            "versions": {
-                "titiler.stacapi": titiler_stacapi_version,
-                "titiler.core": titiler_version,
-                "rio-tiler": rio_tiler_version,
-                "rasterio": rasterio.__version__,
-                "gdal": rasterio.__gdal_version__,
-                "proj": rasterio.__proj_version__,
-                "fastapi": fastapi_version,
-                "starlette": starlette_version,
-                "pydantic": pydantic_version,
-            },
-        }
+    return data
