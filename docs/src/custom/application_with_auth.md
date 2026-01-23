@@ -8,6 +8,7 @@ requirements: titiler.stacapi
 ```python
 """TiTiler+stacapi FastAPI application."""
 
+from dataclasses import dataclass, field
 
 from fastapi import Depends, FastAPI
 from fastapi.security import APIKeyHeader
@@ -16,6 +17,7 @@ from starlette.requests import Request
 from typing_extensions import Annotated
 
 import morecantile
+from titiler.core.dependencies import DefaultDependency
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.middleware import CacheControlMiddleware
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
@@ -31,15 +33,22 @@ stacapi_config = STACAPISettings()
 header_scheme = APIKeyHeader(name="Authorization", description="STAC API Authorization")
 
 
-def STACApiParamsAuth(
-    request: Request,
-    token: Annotated[str, Depends(header_scheme)],
-) -> APIParams:
-    """Return STAC API Parameters."""
-    return APIParams(
-        api_url=request.app.state.stac_url,
-        headers={"Authorization": token},
-    )
+@dataclass(init=False)
+class BackendParams(DefaultDependency):
+    """backend parameters."""
+
+    api_params: APIParams = field(init=False)
+
+    def __init__(self, request: Request, token: Annotated[str, Depends(header_scheme)]):
+        """Initialize BackendParams
+
+        Note: Because we don't want `api_params` to appear in the documentation we use a dataclass with a custom `__init__` method.
+        FastAPI will use the `__init__` method but will exclude Request in the documentation making `api_params` an invisible dependency.
+        """
+        self.api_params = APIParams(
+            url=request.app.state.stac_url,
+            headers={"Authorization": token},
+        )
 
 
 app = FastAPI(
@@ -69,20 +78,17 @@ if settings.cors_origins:
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 
-webmerc = morecantile.tms.get("WebMercatorQuad")
-webmerc.id = "EPSG:3857"
-supported_tms = morecantile.TileMatrixSets({"EPSG:3857": webmerc})
+webmerc = morecantile.tms.get("WebMercatorQuad").model_dump()
+webmerc["id"] = "EPSG3857"
+supported_tms = morecantile.TileMatrixSets({"EPSG3857": morecantile.TileMatrixSet.model_validate(webmerc)})
 
 ###############################################################################
 # OGC WMTS Endpoints
 wmts = OGCWMTSFactory(
-    path_dependency=STACApiParamsAuth,
+    backend_dependency=BackendParams,
     supported_tms=supported_tms,
 )
 
-app.include_router(
-    wmts.router,
-    tags=["Web Map Tile Service"],
-)
+app.include_router(wmts.router, tags=["Web Map Tile Service"])
 
 ```

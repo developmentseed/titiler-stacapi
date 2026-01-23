@@ -1,63 +1,139 @@
 """Custom STAC reader."""
 
-from typing import Any, Dict, Optional, Set, Type
+from typing import Any, Sequence, Set, Type
+from urllib.parse import urlparse
 
 import attr
 import pystac
 import rasterio
 from morecantile import TileMatrixSet
-from rasterio.crs import CRS
+from rasterio.transform import array_bounds
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
-from rio_tiler.errors import InvalidAssetName
-from rio_tiler.io import BaseReader, Reader, stac
+from rio_tiler.errors import InvalidAssetName, MissingAssets
+from rio_tiler.io import BaseReader, MultiBaseReader, Reader
+from rio_tiler.io.stac import DEFAULT_VALID_TYPE, STAC_ALTERNATE_KEY, STACReader
 from rio_tiler.types import AssetInfo
-
-from titiler.stacapi.settings import STACSettings
-
-stac_config = STACSettings()
 
 
 @attr.s
-class STACReader(stac.STACReader):
+class STACAPIReader(STACReader):
     """Custom STAC Reader.
 
     Only accept `pystac.Item` as input (while rio_tiler.io.STACReader accepts url or pystac.Item)
 
     """
 
+    input: pystac.Item = attr.ib()
+
     tms: TileMatrixSet = attr.ib(default=WEB_MERCATOR_TMS)
-    minzoom: int = attr.ib()
-    maxzoom: int = attr.ib()
+    minzoom: int = attr.ib(default=None)
+    maxzoom: int = attr.ib(default=None)
 
-    geographic_crs: CRS = attr.ib(default=WGS84_CRS)
+    include_assets: Set[str] | None = attr.ib(default=None)
+    exclude_assets: Set[str] | None = attr.ib(default=None)
 
-    include_assets: Optional[Set[str]] = attr.ib(default=None)
-    exclude_assets: Optional[Set[str]] = attr.ib(default=None)
+    include_asset_types: Set[str] = attr.ib(default=DEFAULT_VALID_TYPE)
+    exclude_asset_types: Set[str] | None = attr.ib(default=None)
 
-    include_asset_types: Set[str] = attr.ib(default=stac.DEFAULT_VALID_TYPE)
-    exclude_asset_types: Optional[Set[str]] = attr.ib(default=None)
+    assets: Sequence[str] = attr.ib(init=False)
+    default_assets: Sequence[str] | None = attr.ib(default=None)
 
     reader: Type[BaseReader] = attr.ib(default=Reader)
-    reader_options: Dict = attr.ib(factory=dict)
+    reader_options: dict = attr.ib(factory=dict)
 
-    fetch_options: Dict = attr.ib(factory=dict)
+    ctx: rasterio.Env = attr.ib(default=rasterio.Env)
 
-    ctx: Any = attr.ib(default=rasterio.Env)
-
-    item: pystac.Item = attr.ib(init=False)
+    # item is a `input` attribute in the rio-tiler `STACReader`
+    # we move it outside the `init` method because we will take the `pystac.Item`
+    # directly as input.
+    item: Any = attr.ib(init=False)
+    fetch_options: dict = attr.ib(init=False)
 
     def __attrs_post_init__(self):
-        """Fetch STAC Item and get list of valid assets."""
+        """set self.item from input."""
         self.item = self.input
         super().__attrs_post_init__()
 
-    @minzoom.default
-    def _minzoom(self):
-        return self.tms.minzoom
 
-    @maxzoom.default
-    def _maxzoom(self):
-        return self.tms.maxzoom
+@attr.s
+class SimpleSTACReader(MultiBaseReader):
+    """Simplified STAC Reader.
+
+    Inputs should be in form of:
+    ```json
+    {
+        "id": "IAMASTACITEM",
+        "collection": "mycollection",
+        "bbox": (0, 0, 10, 10),
+        "assets": {
+            "COG": {
+                "href": "https://somewhereovertherainbow.io/cog.tif"
+            }
+        }
+    }
+    ```
+
+    """
+
+    input: dict[str, Any] = attr.ib()
+
+    tms: TileMatrixSet = attr.ib(default=WEB_MERCATOR_TMS)
+    minzoom: int = attr.ib(default=None)
+    maxzoom: int = attr.ib(default=None)
+
+    assets: Sequence[str] = attr.ib(init=False)
+    default_assets: Sequence[str] | None = attr.ib(default=None)
+
+    reader: Type[BaseReader] = attr.ib(default=Reader)
+    reader_options: dict = attr.ib(factory=dict)
+
+    ctx: Any = attr.ib(default=rasterio.Env)
+
+    def __attrs_post_init__(self) -> None:
+        """Set reader spatial infos and list of valid assets."""
+        self.bounds = self.input["bbox"]
+        self.crs = WGS84_CRS  # Per specification STAC items are in WGS84
+
+        if proj := self.input.get("proj"):
+            crs_string = proj.get("code") or proj.get("epsg") or proj.get("wkt")
+            if all(
+                [
+                    proj.get("transform"),
+                    proj.get("shape"),
+                    crs_string,
+                ]
+            ):
+                self.height, self.width = proj.get("shape")
+                self.transform = proj.get("transform")
+                self.bounds = array_bounds(self.height, self.width, self.transform)
+                self.crs = rasterio.crs.CRS.from_string(crs_string)
+
+        self.minzoom = self.minzoom if self.minzoom is not None else self._minzoom
+        self.maxzoom = self.maxzoom if self.maxzoom is not None else self._maxzoom
+
+        self.assets = list(self.input["assets"])
+
+        if not self.assets:
+            raise MissingAssets(
+                "No valid asset found. Asset's media types not supported"
+            )
+
+    def _parse_vrt_asset(self, asset: str) -> tuple[str, str | None]:
+        if asset.startswith("vrt://") and asset not in self.assets:
+            parsed = urlparse(asset)
+            if not parsed.netloc:
+                raise InvalidAssetName(
+                    f"'{asset}' is not valid, couldn't find valid asset"
+                )
+
+            if parsed.netloc not in self.assets:
+                raise InvalidAssetName(
+                    f"'{parsed.netloc}' is not valid, should be one of {self.assets}"
+                )
+
+            return parsed.netloc, parsed.query
+
+        return asset, None
 
     def _get_asset_info(self, asset: str) -> AssetInfo:
         """Validate asset names and return asset's url.
@@ -69,27 +145,29 @@ class STACReader(stac.STACReader):
             str: STAC asset href.
 
         """
+        asset, vrt_options = self._parse_vrt_asset(asset)
         if asset not in self.assets:
             raise InvalidAssetName(
-                f"'{asset}' is not valid, should be one of {self.assets}"
+                f"{asset} is not valid. Should be one of {self.assets}"
             )
 
-        asset_info = self.item.assets[asset]
-        extras = asset_info.extra_fields
-
-        url = asset_info.get_absolute_href() or asset_info.href
-        if alternate := stac_config.alternate_url:
-            url = asset_info.to_dict()["alternate"][alternate]["href"]
-
+        asset_info = self.input["assets"][asset]
         info = AssetInfo(
-            url=url,
-            metadata=extras,
+            url=asset_info["href"],
+            env={},
         )
 
-        if head := extras.get("file:header_size"):
-            info["env"] = {"GDAL_INGESTED_BYTES_AT_OPEN": head}
+        if STAC_ALTERNATE_KEY and "alternate" in asset_info:
+            if alternate := asset_info["alternate"].get(STAC_ALTERNATE_KEY):
+                info["url"] = alternate["href"]
 
-        if bands := extras.get("raster:bands"):
+        if media_type := asset_info.get("type"):
+            info["media_type"] = media_type
+
+        if header_size := asset_info.get("file:header_size"):
+            info["env"]["GDAL_INGESTED_BYTES_AT_OPEN"] = header_size
+
+        if bands := asset_info.get("raster:bands"):
             stats = [
                 (b["statistics"]["minimum"], b["statistics"]["maximum"])
                 for b in bands
@@ -97,5 +175,9 @@ class STACReader(stac.STACReader):
             ]
             if len(stats) == len(bands):
                 info["dataset_statistics"] = stats
+
+        if vrt_options:
+            # Construct VRT url
+            info["url"] = f"vrt://{info['url']}?{vrt_options}"
 
         return info

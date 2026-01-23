@@ -1,4 +1,9 @@
 {% include "header.html" %}
+{% if params %}
+  {% set urlq = url + '?' + params + '&' %}
+  {% else %}
+  {% set urlq = url + '?' %}
+{% endif %}
 
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb bg-light">
@@ -14,6 +19,10 @@
 </nav>
 
 <h1>{{ response.title }}</h1>
+<p>
+  {{ response.description }}
+</p>
+
 <pre style=" font-size:10px; text-align: center;" >
   __  .__  __  .__.__                           _________________________  _________     _____ __________.___
 _/  |_|__|/  |_|__|  |   ___________           /   _____/\__    ___/  _  \ \_   ___ \   /  _  \\______   \   |

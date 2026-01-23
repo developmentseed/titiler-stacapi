@@ -1,13 +1,7 @@
-version: '3'
-
 services:
   api:
-    # At the time of writing, rasterio wheels are not available for arm64 arch
-    # so we force the image to be built with linux/amd64
-    platform: linux/amd64
     build:
       context: .
-      dockerfile: dockerfiles/Dockerfile
     ports:
       - "8081:8081"
     environment:
@@ -45,6 +39,4 @@ services:
       # TiTiler STAC API Config
       - TITILER_STACAPI_API_DEBUG=TRUE
       - TITILER_STACAPI_STAC_API_URL=${TITILER_STACAPI_STAC_API_URL}
-    command:
-      # You can also overwrite the CMD option and use simple `uvicorn` ASGI server
-      bash -c "uvicorn titiler.stacapi.main:app --port 8081 --host 0.0.0.0"
+    command: ["uvicorn", "titiler.stacapi.main:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "1"]

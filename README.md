@@ -9,6 +9,9 @@
   <a href="https://github.com/developmentseed/titiler-stacapi/actions?query=workflow%3ACI" target="_blank">
       <img src="https://github.com/developmentseed/titiler-stacapi/workflows/CI/badge.svg" alt="Test">
   </a>
+  <a href="https://pypi.org/project/titiler-stacapi" target="_blank">
+      <img src="https://img.shields.io/pypi/v/titiler-stacapi?color=%2334D058&label=pypi%20package" alt="Package version">
+  </a>  
   <a href="https://codecov.io/gh/developmentseed/titiler-stacapi" target="_blank">
       <img src="https://codecov.io/gh/developmentseed/titiler-stacapi/branch/main/graph/badge.svg" alt="Coverage">
   </a>
@@ -35,12 +38,17 @@ python -m pip install -U pip
 python -m pip  install titiler.stacapi
 ```
 
-or from sources and run for development:
+To install from sources and run for development:
+
+We recommand using [`uv`](https://docs.astral.sh/uv) as project manager for development.
+
+See https://docs.astral.sh/uv/getting-started/installation/ for installation 
 
 ```bash
 git clone https://github.com/developmentseed/titiler-stacapi.git
 cd titiler-stacapi
-python -m pip install -e .
+
+uv sync
 ```
 
 ## Launch
@@ -49,12 +57,8 @@ You'll need to have `TITILER_STACAPI_STAC_API_URL` variables set in your environ
 
 ```
 export TITILER_STACAPI_STAC_API_URL=https://api.stac
-```
 
-```
-python -m pip install uvicorn
-
-uvicorn titiler.stacapi.main:app --port 8000
+uv run --extra server uvicorn titiler.stacapi.main:app --port 8000
 ```
 
 ### Using Docker
@@ -66,7 +70,7 @@ $ export TITILER_STACAPI_STAC_API_URL=https://api.stac
 $ docker-compose up --build api
 ```
 
-It runs `titiler.stacapi` using Gunicorn web server.
+It runs `titiler.stacapi` using Uvicorn web server.
 
 ### How it works
 

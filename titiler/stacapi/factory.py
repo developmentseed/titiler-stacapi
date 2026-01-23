@@ -13,51 +13,56 @@ import rasterio
 from attrs import define, field
 from cachetools import TTLCache, cached
 from cachetools.keys import hashkey
-from cogeo_mosaic.backends import BaseBackend
-from fastapi import Depends, HTTPException, Path, Query
+from fastapi import Depends, HTTPException, Path
 from fastapi.dependencies.utils import get_dependant, request_params_to_args
 from morecantile import tms as morecantile_tms
 from morecantile.defaults import TileMatrixSets
-from pydantic import conint
 from pystac_client.stac_api_io import StacApiIO
 from rasterio.transform import xy as rowcol_to_coords
 from rasterio.warp import transform as transform_points
 from rio_tiler.constants import MAX_THREADS
 from rio_tiler.models import ImageData
 from rio_tiler.mosaic.methods.base import MosaicMethodBase
+from rio_tiler.types import ColorMapType
+from rio_tiler.utils import CRS_to_uri
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, Response
-from starlette.routing import compile_path, replace_params
+from starlette.responses import Response
 from starlette.templating import Jinja2Templates
 from typing_extensions import Annotated
 from urllib3 import Retry
 
+from titiler.core.algorithm import BaseAlgorithm
+from titiler.core.algorithm import algorithms as available_algorithms
 from titiler.core.dependencies import (
     AssetsBidxExprParams,
-    ColorFormulaParams,
+    ColorMapParams,
+    DatasetParams,
     DefaultDependency,
+    ImageRenderingParams,
     TileParams,
 )
-from titiler.core.factory import TilerFactory, img_endpoint_params
-from titiler.core.models.mapbox import TileJSON
-from titiler.core.resources.enums import ImageType, MediaType, OptionalHeader
-from titiler.core.resources.responses import GeoJSONResponse, XMLResponse
-from titiler.core.utils import render_image
+from titiler.core.factory import BaseFactory, img_endpoint_params
+from titiler.core.resources.enums import ImageType, OptionalHeader
+from titiler.core.resources.responses import GeoJSONResponse
+from titiler.core.utils import render_image, tms_limits
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import (
     APIParams,
-    STACApiParams,
-    STACQueryParams,
-    STACSearchParams,
+    BackendParams,
+    Search,
+    SearchParams,
+    STACAPIExtensionParams,
 )
 from titiler.stacapi.models import FeatureInfo, LayerDict
 from titiler.stacapi.pystac import Client
+from titiler.stacapi.reader import SimpleSTACReader
 from titiler.stacapi.settings import CacheSettings, RetrySettings
-from titiler.stacapi.utils import _tms_limits
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
+
+ttl_cache = TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl)  # type: ignore
 
 MOSAIC_THREADS = int(os.getenv("MOSAIC_CONCURRENCY", MAX_THREADS))
 MOSAIC_STRICT_ZOOM = str(os.getenv("MOSAIC_STRICT_ZOOM", False)).lower() in [
@@ -66,6 +71,7 @@ MOSAIC_STRICT_ZOOM = str(os.getenv("MOSAIC_STRICT_ZOOM", False)).lower() in [
 ]
 
 jinja2_env = jinja2.Environment(
+    autoescape=jinja2.select_autoescape(["html", "xml"]),
     loader=jinja2.ChoiceLoader(
         [
             jinja2.PackageLoader(__package__, "templates"),
@@ -92,457 +98,7 @@ def get_dependency_params(*, dependency: Callable, query_params: Dict) -> Any:
         query_values, _ = request_params_to_args(dep.query_params, query_params)
         return dependency(**query_values)
 
-    return
-
-
-@define(kw_only=True)
-class MosaicTilerFactory(TilerFactory):
-    """Custom MosaicTiler for STACAPI Mosaic Backend."""
-
-    path_dependency: Callable[..., APIParams] = STACApiParams
-
-    search_dependency: Callable[..., Dict] = STACSearchParams
-
-    # In this factory, `backend` should be a Mosaic Backend
-    # https://developmentseed.org/cogeo-mosaic/advanced/backends/
-    backend: Type[BaseBackend] = STACAPIBackend
-
-    # Because the endpoints should work with STAC Items,
-    # the `layer_dependency` define which query parameters are mandatory/optional to `display` images
-    # Defaults to `titiler.core.dependencies.AssetsBidxExprParams`, `assets=` or `expression=` is required
-    layer_dependency: Type[DefaultDependency] = AssetsBidxExprParams
-
-    # The `tile_dependency` define options like `buffer` or `padding`
-    # used in Tile/Tilejson/WMTS Dependencies
-    tile_dependency: Type[DefaultDependency] = TileParams
-
-    pixel_selection_dependency: Callable[..., MosaicMethodBase] = PixelSelectionParams
-
-    backend_dependency: Type[DefaultDependency] = DefaultDependency
-
-    add_viewer: bool = False
-
-    templates: Jinja2Templates = DEFAULT_TEMPLATES
-
-    optional_headers: List[OptionalHeader] = field(factory=list)
-
-    def get_base_url(self, request: Request) -> str:
-        """return endpoints base url."""
-        base_url = str(request.base_url).rstrip("/")
-        if self.router_prefix:
-            prefix = self.router_prefix.lstrip("/")
-            # If we have prefix with custom path param we check and replace them with
-            # the path params provided
-            if "{" in prefix:
-                _, path_format, param_convertors = compile_path(prefix)
-                prefix, _ = replace_params(
-                    path_format, param_convertors, request.path_params.copy()
-                )
-            base_url += prefix
-
-        return base_url
-
-    def register_routes(self) -> None:
-        """register endpoints."""
-
-        self.register_tiles()
-        self.register_tilejson()
-        self.register_wmts()
-        if self.add_viewer:
-            self.register_map()
-
-    def register_tiles(self) -> None:
-        """register tiles routes."""
-
-        @self.router.get("/tiles/{tileMatrixSetId}/{z}/{x}/{y}", **img_endpoint_params)
-        @self.router.get(
-            "/tiles/{tileMatrixSetId}/{z}/{x}/{y}.{format}",
-            **img_endpoint_params,
-        )
-        @self.router.get(
-            "/tiles/{tileMatrixSetId}/{z}/{x}/{y}@{scale}x",
-            **img_endpoint_params,
-        )
-        @self.router.get(
-            "/tiles/{tileMatrixSetId}/{z}/{x}/{y}@{scale}x.{format}",
-            **img_endpoint_params,
-        )
-        def tile(
-            request: Request,
-            tileMatrixSetId: Annotated[  # type: ignore
-                Literal[tuple(self.supported_tms.list())],
-                Path(
-                    description="Identifier selecting one of the TileMatrixSetId supported"
-                ),
-            ],
-            z: Annotated[
-                int,
-                Path(
-                    description="Identifier (Z) selecting one of the scales defined in the TileMatrixSet and representing the scaleDenominator the tile.",
-                ),
-            ],
-            x: Annotated[
-                int,
-                Path(
-                    description="Column (X) index of the tile on the selected TileMatrix. It cannot exceed the MatrixHeight-1 for the selected TileMatrix.",
-                ),
-            ],
-            y: Annotated[
-                int,
-                Path(
-                    description="Row (Y) index of the tile on the selected TileMatrix. It cannot exceed the MatrixWidth-1 for the selected TileMatrix.",
-                ),
-            ],
-            api_params=Depends(self.path_dependency),
-            search_query=Depends(self.search_dependency),
-            scale: Annotated[  # type: ignore
-                Optional[conint(gt=0, le=4)],
-                "Tile size scale. 1=256x256, 2=512x512...",
-            ] = None,
-            format: Annotated[
-                Optional[ImageType],
-                "Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
-            ] = None,
-            layer_params=Depends(self.layer_dependency),
-            dataset_params=Depends(self.dataset_dependency),
-            pixel_selection=Depends(self.pixel_selection_dependency),
-            tile_params=Depends(self.tile_dependency),
-            post_process=Depends(self.process_dependency),
-            rescale=Depends(self.rescale_dependency),
-            color_formula=Depends(ColorFormulaParams),
-            colormap=Depends(self.colormap_dependency),
-            render_params=Depends(self.render_dependency),
-            backend_params=Depends(self.backend_dependency),
-            reader_params=Depends(self.reader_dependency),
-            env=Depends(self.environment_dependency),
-        ):
-            """Create map tile."""
-            scale = scale or 1
-
-            tms = self.supported_tms.get(tileMatrixSetId)
-            with rasterio.Env(**env):
-                with self.backend(
-                    url=api_params["api_url"],
-                    headers=api_params.get("headers", {}),
-                    tms=tms,
-                    reader_options={**reader_params.as_dict()},
-                    **backend_params.as_dict(),
-                ) as src_dst:
-                    if MOSAIC_STRICT_ZOOM and (
-                        z < src_dst.minzoom or z > src_dst.maxzoom
-                    ):
-                        raise HTTPException(
-                            400,
-                            f"Invalid ZOOM level {z}. Should be between {src_dst.minzoom} and {src_dst.maxzoom}",
-                        )
-
-                    image, assets = src_dst.tile(
-                        x,
-                        y,
-                        z,
-                        search_query=search_query,
-                        tilesize=scale * 256,
-                        pixel_selection=pixel_selection,
-                        threads=MOSAIC_THREADS,
-                        **tile_params.as_dict(),
-                        **layer_params.as_dict(),
-                        **dataset_params.as_dict(),
-                    )
-
-            if post_process:
-                image = post_process(image)
-
-            if rescale:
-                image.rescale(rescale)
-
-            if color_formula:
-                image.apply_color_formula(color_formula)
-
-            content, media_type = render_image(
-                image,
-                output_format=format,
-                colormap=colormap,
-                **render_params.as_dict(),
-            )
-
-            headers: Dict[str, str] = {}
-            if OptionalHeader.x_assets in self.optional_headers:
-                ids = [x["id"] for x in assets]
-                headers["X-Assets"] = ",".join(ids)
-
-            if (
-                OptionalHeader.server_timing in self.optional_headers
-                and image.metadata.get("timings")
-            ):
-                headers["Server-Timing"] = ", ".join(
-                    [f"{name};dur={time}" for (name, time) in image.metadata["timings"]]
-                )
-
-            return Response(content, media_type=media_type, headers=headers)
-
-    def register_tilejson(self) -> None:
-        """register tiles routes."""
-
-        @self.router.get(
-            "/{tileMatrixSetId}/tilejson.json",
-            response_model=TileJSON,
-            responses={200: {"description": "Return a tilejson"}},
-            response_model_exclude_none=True,
-        )
-        def tilejson(
-            request: Request,
-            tileMatrixSetId: Annotated[  # type: ignore
-                Literal[tuple(self.supported_tms.list())],
-                Path(
-                    description="Identifier selecting one of the TileMatrixSetId supported"
-                ),
-            ],
-            search_query=Depends(self.search_dependency),
-            tile_format: Annotated[
-                Optional[ImageType],
-                Query(
-                    description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
-                ),
-            ] = None,
-            tile_scale: Annotated[
-                Optional[int],
-                Query(
-                    gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
-                ),
-            ] = None,
-            minzoom: Annotated[
-                Optional[int],
-                Query(description="Overwrite default minzoom."),
-            ] = None,
-            maxzoom: Annotated[
-                Optional[int],
-                Query(description="Overwrite default maxzoom."),
-            ] = None,
-            layer_params=Depends(self.layer_dependency),
-            dataset_params=Depends(self.dataset_dependency),
-            pixel_selection=Depends(self.pixel_selection_dependency),
-            tile_params=Depends(self.tile_dependency),
-            post_process=Depends(self.process_dependency),
-            rescale=Depends(self.rescale_dependency),
-            color_formula=Depends(ColorFormulaParams),
-            colormap=Depends(self.colormap_dependency),
-            render_params=Depends(self.render_dependency),
-            backend_params=Depends(self.backend_dependency),
-            reader_params=Depends(self.reader_dependency),
-        ):
-            """Return TileJSON document."""
-            route_params = {
-                "z": "{z}",
-                "x": "{x}",
-                "y": "{y}",
-                "tileMatrixSetId": tileMatrixSetId,
-            }
-
-            if tile_scale:
-                route_params["scale"] = tile_scale
-
-            if tile_format:
-                route_params["format"] = tile_format.value
-
-            tiles_url = self.url_for(request, "tile", **route_params)
-
-            qs_key_to_remove = [
-                "tilematrixsetid",
-                "tile_format",
-                "tile_scale",
-                "minzoom",
-                "maxzoom",
-            ]
-            qs = [
-                (key, value)
-                for (key, value) in request.query_params._list
-                if key.lower() not in qs_key_to_remove
-            ]
-            if qs:
-                tiles_url += f"?{urlencode(qs)}"
-
-            tms = self.supported_tms.get(tileMatrixSetId)
-            minzoom = minzoom if minzoom is not None else tms.minzoom
-            maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
-            bounds = search_query.get("bbox") or tms.bbox
-
-            return {
-                "bounds": bounds,
-                "minzoom": minzoom,
-                "maxzoom": maxzoom,
-                "name": "STACAPI",
-                "tiles": [tiles_url],
-            }
-
-    def register_map(self):  # noqa: C901
-        """Register /map endpoint."""
-
-        @self.router.get("/{tileMatrixSetId}/map", response_class=HTMLResponse)
-        def map_viewer(
-            request: Request,
-            tileMatrixSetId: Annotated[
-                Literal[tuple(self.supported_tms.list())],
-                Path(
-                    description="Identifier selecting one of the TileMatrixSetId supported"
-                ),
-            ],
-            search_query=Depends(self.search_dependency),
-            tile_format: Annotated[
-                Optional[ImageType],
-                Query(
-                    description="Default will be automatically defined if the output image needs a mask (png) or not (jpeg).",
-                ),
-            ] = None,
-            tile_scale: Annotated[
-                Optional[int],
-                Query(
-                    gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
-                ),
-            ] = None,
-            minzoom: Annotated[
-                Optional[int],
-                Query(description="Overwrite default minzoom."),
-            ] = None,
-            maxzoom: Annotated[
-                Optional[int],
-                Query(description="Overwrite default maxzoom."),
-            ] = None,
-            layer_params=Depends(self.layer_dependency),
-            dataset_params=Depends(self.dataset_dependency),
-            pixel_selection=Depends(self.pixel_selection_dependency),
-            tile_params=Depends(self.tile_dependency),
-            post_process=Depends(self.process_dependency),
-            rescale=Depends(self.rescale_dependency),
-            color_formula=Depends(ColorFormulaParams),
-            colormap=Depends(self.colormap_dependency),
-            render_params=Depends(self.render_dependency),
-            backend_params=Depends(self.backend_dependency),
-            reader_params=Depends(self.reader_dependency),
-            env=Depends(self.environment_dependency),
-        ):
-            """Return a simple map viewer."""
-            tilejson_url = self.url_for(
-                request,
-                "tilejson",
-                tileMatrixSetId=tileMatrixSetId,
-            )
-            if request.query_params._list:
-                tilejson_url += f"?{urlencode(request.query_params._list)}"
-
-            tms = self.supported_tms.get(tileMatrixSetId)
-
-            return self.templates.TemplateResponse(
-                name="map.html",
-                context={
-                    "request": request,
-                    "tilejson_endpoint": tilejson_url,
-                    "tms": tms,
-                    "resolutions": [matrix.cellSize for matrix in tms],
-                    "template": {
-                        "api_root": str(request.base_url).rstrip("/"),
-                        "params": request.query_params,
-                        "title": "Map",
-                    },
-                },
-                media_type="text/html",
-            )
-
-    def register_wmts(self):  # noqa: C901
-        """Add wmts endpoint."""
-
-        @self.router.get(
-            "/{tileMatrixSetId}/WMTSCapabilities.xml",
-            response_class=XMLResponse,
-        )
-        def wmts(
-            request: Request,
-            tileMatrixSetId: Annotated[
-                Literal[tuple(self.supported_tms.list())],
-                Path(
-                    description="Identifier selecting one of the TileMatrixSetId supported"
-                ),
-            ],
-            search_query=Depends(self.search_dependency),
-            tile_format: Annotated[
-                ImageType,
-                Query(description="Output image type. Default is png."),
-            ] = ImageType.png,
-            tile_scale: Annotated[
-                int,
-                Query(
-                    gt=0, lt=4, description="Tile size scale. 1=256x256, 2=512x512..."
-                ),
-            ] = 1,
-            minzoom: Annotated[
-                Optional[int],
-                Query(description="Overwrite default minzoom."),
-            ] = None,
-            maxzoom: Annotated[
-                Optional[int],
-                Query(description="Overwrite default maxzoom."),
-            ] = None,
-        ):
-            """OGC WMTS endpoint."""
-            route_params = {
-                "z": "{TileMatrix}",
-                "x": "{TileCol}",
-                "y": "{TileRow}",
-                "scale": tile_scale,
-                "format": tile_format.value,
-                "tileMatrixSetId": tileMatrixSetId,
-            }
-
-            tiles_url = self.url_for(request, "tile", **route_params)
-
-            qs_key_to_remove = [
-                "tilematrixsetid",
-                "tile_format",
-                "tile_scale",
-                "minzoom",
-                "maxzoom",
-                "service",
-                "request",
-            ]
-            qs = [
-                (key, value)
-                for (key, value) in request.query_params._list
-                if key.lower() not in qs_key_to_remove
-            ]
-            if qs:
-                tiles_url += f"?{urlencode(qs)}"
-
-            tms = self.supported_tms.get(tileMatrixSetId)
-            minzoom = minzoom if minzoom is not None else tms.minzoom
-            maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
-            bounds = search_query.get("bbox") or tms.bbox
-
-            tileMatrix = []
-            for zoom in range(minzoom, maxzoom + 1):  # type: ignore
-                matrix = tms.matrix(zoom)
-                tm = f"""
-                        <TileMatrix>
-                            <ows:Identifier>{matrix.id}</ows:Identifier>
-                            <ScaleDenominator>{matrix.scaleDenominator}</ScaleDenominator>
-                            <TopLeftCorner>{matrix.pointOfOrigin[0]} {matrix.pointOfOrigin[1]}</TopLeftCorner>
-                            <TileWidth>{matrix.tileWidth}</TileWidth>
-                            <TileHeight>{matrix.tileHeight}</TileHeight>
-                            <MatrixWidth>{matrix.matrixWidth}</MatrixWidth>
-                            <MatrixHeight>{matrix.matrixHeight}</MatrixHeight>
-                        </TileMatrix>"""
-                tileMatrix.append(tm)
-
-            return self.templates.TemplateResponse(
-                "wmts.xml",
-                {
-                    "request": request,
-                    "title": "STAC API",
-                    "bounds": bounds,
-                    "tileMatrix": tileMatrix,
-                    "tms": tms,
-                    "media_type": tile_format.mediatype,
-                },
-                media_type="application/xml",
-            )
+    return dependency()
 
 
 class WMTSMediaType(str, Enum):
@@ -557,12 +113,13 @@ class WMTSMediaType(str, Enum):
 
 
 @cached(  # type: ignore
-    TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
-    key=lambda url, headers, supported_tms: hashkey(url, json.dumps(headers)),
+    ttl_cache,
+    key=lambda api_params, supported_tms: hashkey(
+        api_params["url"], json.dumps(api_params.get("headers", {}))
+    ),
 )
 def get_layer_from_collections(  # noqa: C901
-    url: str,
-    headers: Optional[Dict] = None,
+    api_params: APIParams,
     supported_tms: Optional[TileMatrixSets] = None,
 ) -> Dict[str, LayerDict]:
     """Get Layers from STAC Collections."""
@@ -573,9 +130,9 @@ def get_layer_from_collections(  # noqa: C901
             total=retry_config.retry,
             backoff_factor=retry_config.retry_factor,
         ),
-        headers=headers,
+        headers=api_params.get("headers", {}),
     )
-    catalog = Client.open(url, stac_io=stac_api_io)
+    catalog = Client.open(api_params["url"], stac_io=stac_api_io)
 
     layers: Dict[str, LayerDict] = {}
     for collection in catalog.get_collections():
@@ -584,8 +141,9 @@ def get_layer_from_collections(  # noqa: C901
 
         if "renders" in collection.extra_fields:
             for name, render in collection.extra_fields["renders"].items():
-
-                tilematrixsets = render.pop("tilematrixsets", None)
+                tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
+                    "tilematrixsets", None
+                )
                 output_format = render.pop("format", None)
                 aggregation = render.pop("aggregation", None)
                 title = render.pop("title", None)
@@ -599,7 +157,7 @@ def get_layer_from_collections(  # noqa: C901
                     "id": render_id,
                     "collection": collection.id,
                     "title": title,
-                    "bbox": [-180, -90, 180, 90],
+                    "bbox": (-180, -90, 180, 90),
                     "style": "default",
                     "render": render,
                 }
@@ -607,38 +165,29 @@ def get_layer_from_collections(  # noqa: C901
                     layer["format"] = output_format
 
                 if spatial_extent:
-                    layer["bbox"] = spatial_extent.bboxes[0]
+                    layer["bbox"] = tuple(spatial_extent.bboxes[0])
 
-                # NB. The WMTS spec is contradictory re. the multiplicity
-                # relationships between Layer and TileMatrixSetLink, and
-                # TileMatrixSetLink and tileMatrixSet (URI).
-                # WMTS only support 1 set of limits for a TileMatrixSet
-                if tilematrixsets:
-                    if len(tilematrixsets) == 1:
-                        layer["tilematrixsets"] = {
-                            tms_id: _tms_limits(
-                                supported_tms.get(tms_id), layer["bbox"], zooms=zooms
-                            )
-                            for tms_id, zooms in tilematrixsets.items()
-                        }
-                    else:
-                        layer["tilematrixsets"] = {
-                            tms_id: None for tms_id, _ in tilematrixsets.items()
-                        }
+                tilematrixsets = tilematrixsets or {
+                    tms_id: None for tms_id in supported_tms.list()
+                }
 
-                else:
-                    tilematrixsets = supported_tms.list()
-                    if len(tilematrixsets) == 1:
-                        layer["tilematrixsets"] = {
-                            tms_id: _tms_limits(
-                                supported_tms.get(tms_id), layer["bbox"]
-                            )
-                            for tms_id in tilematrixsets
-                        }
-                    else:
-                        layer["tilematrixsets"] = {
-                            tms_id: None for tms_id in tilematrixsets
-                        }
+                layer["tilematrixsets"] = {}
+                for tms_id, zooms in tilematrixsets.items():
+                    try:
+                        limits = tms_limits(
+                            supported_tms.get(tms_id),
+                            layer["bbox"],
+                            zooms=zooms,
+                        )
+                        # NOTE: The WMTS spec is contradictory re. the multiplicity
+                        # relationships between Layer and TileMatrixSetLink, and
+                        # TileMatrixSetLink and tileMatrixSet (URI).
+                        # WMTS only support 1 set of limits for a TileMatrixSet
+                        layer["tilematrixsets"][tms_id] = (
+                            limits if len(tilematrixsets) == 1 else None
+                        )
+                    except Exception as e:  # noqa
+                        pass
 
                 if (
                     "cube:dimensions" in collection.extra_fields
@@ -728,29 +277,48 @@ def get_layer_from_collections(  # noqa: C901
 
 
 @define(kw_only=True)
-class OGCWMTSFactory(TilerFactory):
+class OGCWMTSFactory(BaseFactory):
     """Create /wmts endpoint"""
 
-    path_dependency: Callable[..., APIParams] = STACApiParams
+    backend: Type[STACAPIBackend] = STACAPIBackend
+    # Backend Depencency has the api_params informations
+    backend_dependency: Type[BackendParams] = BackendParams
 
-    # In this factory, `reader` should be a Mosaic Backend
-    # https://developmentseed.org/cogeo-mosaic/advanced/backends/
-    backend: Type[BaseBackend] = STACAPIBackend
+    dataset_reader: Type[SimpleSTACReader] = SimpleSTACReader
+    reader_dependency: Type[DefaultDependency] = DefaultDependency
 
-    query_dependency: Callable[..., Any] = STACQueryParams
+    search_dependency: Callable[..., Search] = SearchParams
+    assets_accessor_dependency: Type[DefaultDependency] = STACAPIExtensionParams
 
     # Because the endpoints should work with STAC Items,
     # the `layer_dependency` define which query parameters are mandatory/optional to `display` images
     # Defaults to `titiler.core.dependencies.AssetsBidxExprParams`, `assets=` or `expression=` is required
     layer_dependency: Type[DefaultDependency] = AssetsBidxExprParams
 
+    # Rasterio Dataset Options (nodata, unscale, resampling, reproject)
+    dataset_dependency: Type[DefaultDependency] = DatasetParams
+
     # The `tile_dependency` define options like `buffer` or `padding`
     # used in Tile/Tilejson/WMTS Dependencies
     tile_dependency: Type[DefaultDependency] = TileParams
 
+    # Post Processing Dependencies (algorithm)
+    process_dependency: Callable[..., Optional[BaseAlgorithm]] = (
+        available_algorithms.dependency
+    )
+
+    # Image rendering Dependencies
+    colormap_dependency: Callable[..., Optional[ColorMapType]] = ColorMapParams
+    render_dependency: Type[DefaultDependency] = ImageRenderingParams
+
     pixel_selection_dependency: Callable[..., MosaicMethodBase] = PixelSelectionParams
 
-    backend_dependency: Type[DefaultDependency] = DefaultDependency
+    # GDAL ENV dependency
+    environment_dependency: Callable[..., Dict] = field(default=lambda: {})
+
+    supported_tms: TileMatrixSets = morecantile_tms
+
+    optional_headers: List[OptionalHeader] = field(factory=list)
 
     supported_format: List[str] = field(
         factory=lambda: [
@@ -771,8 +339,7 @@ class OGCWMTSFactory(TilerFactory):
         self,
         req: Dict,
         layer: LayerDict,
-        stac_url: str,
-        headers: Optional[Dict] = None,
+        api_params: APIParams,
     ) -> ImageData:
         """Get Tile Data."""
         layer_time = layer.get("time")
@@ -800,11 +367,76 @@ class OGCWMTSFactory(TilerFactory):
         x = int(req["tilecol"])
         y = int(req["tilerow"])
 
+        ###########################################################
+        # STAC Query parameter provided by the render extension and QueryParameters
+        ###########################################################
+        query_params = copy(layer.get("render")) or {}
+
+        if req_time:
+            start_datetime = python_datetime.datetime.strptime(
+                req_time,
+                "%Y-%m-%d",
+            ).replace(tzinfo=python_datetime.timezone.utc)
+            end_datetime = (
+                start_datetime
+                + python_datetime.timedelta(days=1)
+                - python_datetime.timedelta(
+                    milliseconds=1
+                )  # prevent inclusion of following day
+            )
+
+            query_params["datetime"] = (
+                f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            )
+
+        if "color_formula" in req:
+            query_params["color_formula"] = req["color_formula"]
+
+        if "expression" in req:
+            query_params["expression"] = req["expression"]
+
+        search_query = get_dependency_params(
+            dependency=self.search_dependency,
+            query_params=query_params,
+        )
+        search_query["collections"] = [layer["collection"]]
+
+        asset_accessor = get_dependency_params(
+            dependency=self.assets_accessor_dependency,
+            query_params=query_params,
+        )
+        tile_params = get_dependency_params(
+            dependency=self.tile_dependency,
+            query_params=query_params,
+        )
+        layer_params = get_dependency_params(
+            dependency=self.layer_dependency,
+            query_params=query_params,
+        )
+        reader_params = get_dependency_params(
+            dependency=self.reader_dependency,
+            query_params=query_params,
+        )
+        dataset_params = get_dependency_params(
+            dependency=self.dataset_dependency,
+            query_params=query_params,
+        )
+        pixel_selection = get_dependency_params(
+            dependency=self.pixel_selection_dependency,
+            query_params=query_params,
+        )
+        rendering = get_dependency_params(
+            dependency=self.render_dependency,
+            query_params=query_params,
+        )
+
         tms = self.supported_tms.get(tms_id)
         with self.backend(
-            url=stac_url,
-            headers=headers,
+            search_query,
             tms=tms,
+            reader=self.dataset_reader,
+            reader_options={**reader_params.as_dict()},
+            api_params=api_params,
         ) as src_dst:
             if MOSAIC_STRICT_ZOOM and (z < src_dst.minzoom or z > src_dst.maxzoom):
                 raise HTTPException(
@@ -812,57 +444,12 @@ class OGCWMTSFactory(TilerFactory):
                     f"Invalid ZOOM level {z}. Should be between {src_dst.minzoom} and {src_dst.maxzoom}",
                 )
 
-            ###########################################################
-            # STAC Query parameter provided by the the render extension and QueryParameters
-            ###########################################################
-            query_params = copy(layer.get("render")) or {}
-
-            if req_time:
-                start_datetime = python_datetime.datetime.strptime(
-                    req_time,
-                    "%Y-%m-%d",
-                ).replace(tzinfo=python_datetime.timezone.utc)
-                end_datetime = start_datetime + python_datetime.timedelta(days=1)
-
-                query_params[
-                    "datetime"
-                ] = f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
-
-            if "color_formula" in req:
-                query_params["color_formula"] = req["color_formula"]
-            if "expression" in req:
-                query_params["expression"] = req["expression"]
-
-            search_query = get_dependency_params(
-                dependency=self.query_dependency,
-                query_params=query_params,
-            )
-            search_query["collections"] = [layer["collection"]]
-
-            layer_params = get_dependency_params(
-                dependency=self.layer_dependency,
-                query_params=query_params,
-            )
-            tile_params = get_dependency_params(
-                dependency=self.tile_dependency,
-                query_params=query_params,
-            )
-            dataset_params = get_dependency_params(
-                dependency=self.dataset_dependency,
-                query_params=query_params,
-            )
-
-            pixel_selection = get_dependency_params(
-                dependency=self.pixel_selection_dependency,
-                query_params=query_params,
-            )
-
             image, _ = src_dst.tile(
                 x,
                 y,
                 z,
                 # STAC Query Params
-                search_query=search_query,
+                search_options=asset_accessor.as_dict(),
                 pixel_selection=pixel_selection,
                 threads=MOSAIC_THREADS,
                 **tile_params.as_dict(),
@@ -876,17 +463,11 @@ class OGCWMTSFactory(TilerFactory):
             ):
                 image = post_process(image)
 
-            if rescale := get_dependency_params(
-                dependency=self.rescale_dependency,
-                query_params=query_params,
-            ):
-                image.rescale(rescale)
+            if rendering.rescale:
+                image.rescale(rendering.rescale)
 
-            if color_formula := get_dependency_params(
-                dependency=self.color_formula_dependency,
-                query_params=query_params,
-            ):
-                image.apply_color_formula(color_formula)
+            if rendering.color_formula:
+                image.apply_color_formula(rendering.color_formula)
 
         return image
 
@@ -902,7 +483,9 @@ class OGCWMTSFactory(TilerFactory):
                     "description": "Web Map Tile Server responses",
                     "content": {
                         "application/xml": {},
-                        "application/geo+json": {"schema": FeatureInfo.schema()},
+                        "application/geo+json": {
+                            "schema": FeatureInfo.model_json_schema()
+                        },
                         "image/png": {},
                         "image/jpeg": {},
                         "image/jpg": {},
@@ -1071,7 +654,7 @@ class OGCWMTSFactory(TilerFactory):
         )
         def web_map_tile_service(  # noqa: C901
             request: Request,
-            api_params=Depends(self.path_dependency),
+            backend_params=Depends(self.backend_dependency),
         ):
             """OGC WMTS Service (KVP encoding)"""
             req = {k.lower(): v for k, v in request.query_params.items()}
@@ -1089,7 +672,7 @@ class OGCWMTSFactory(TilerFactory):
                     detail=f"Invalid 'SERVICE' parameter: {service}. Only 'wmts' is accepted",
                 )
 
-            # Version is mandatory is mandatory in the specification but we default to 1.0.0
+            # Version is mandatory in the specification but we default to 1.0.0
             version = req.get("version", "1.0.0")
             if version is None:
                 raise HTTPException(
@@ -1110,8 +693,7 @@ class OGCWMTSFactory(TilerFactory):
                 )
 
             layers = get_layer_from_collections(
-                url=api_params["api_url"],
-                headers=api_params.get("headers", {}),
+                backend_params.api_params,
                 supported_tms=self.supported_tms,
             )
 
@@ -1123,7 +705,7 @@ class OGCWMTSFactory(TilerFactory):
                     name=f"wmts-getcapabilities_{version}.xml",
                     context={
                         "request": request,
-                        "layers": [layer for k, layer in layers.items()],
+                        "layers": [layer for _, layer in layers.items()],
                         "service_url": self.url_for(request, "web_map_tile_service"),
                         "tilematrixsets": [
                             self.supported_tms.get(tms)
@@ -1131,7 +713,7 @@ class OGCWMTSFactory(TilerFactory):
                         ],
                         "media_types": WMTSMediaType,
                     },
-                    media_type=MediaType.xml.value,
+                    media_type="application/xml",
                 )
 
             ###################################################################
@@ -1186,8 +768,7 @@ class OGCWMTSFactory(TilerFactory):
                 image = self.get_tile(
                     req,
                     layer,
-                    stac_url=api_params["api_url"],
-                    headers=api_params.get("headers", {}),
+                    api_params=backend_params.api_params,
                 )
 
                 colormap = get_dependency_params(
@@ -1203,6 +784,23 @@ class OGCWMTSFactory(TilerFactory):
                     colormap=colormap,
                     add_mask=True,
                 )
+
+                headers: Dict[str, str] = {}
+                if image.bounds is not None:
+                    headers["Content-Bbox"] = ",".join(map(str, image.bounds))
+                if uri := CRS_to_uri(image.crs):
+                    headers["Content-Crs"] = f"<{uri}>"
+
+                if (
+                    OptionalHeader.server_timing in self.optional_headers
+                    and image.metadata.get("timings")
+                ):
+                    headers["Server-Timing"] = ", ".join(
+                        [
+                            f"{name};dur={time}"
+                            for (name, time) in image.metadata["timings"]
+                        ]
+                    )
 
                 return Response(content, media_type=media_type)
 
@@ -1257,8 +855,7 @@ class OGCWMTSFactory(TilerFactory):
                 image = self.get_tile(
                     req,
                     layer,
-                    stac_url=api_params["api_url"],
-                    headers=api_params.get("headers", {}),
+                    api_params=backend_params.api_params,
                 )
 
                 colormap = get_dependency_params(
@@ -1267,8 +864,6 @@ class OGCWMTSFactory(TilerFactory):
                 )
                 if colormap:
                     image = image.apply_colormap(colormap)
-
-                # output_format = ImageType(WMTSMediaType(req["format"]).name)
 
                 i = int(req["i"])
                 j = int(req["j"])
@@ -1312,7 +907,7 @@ class OGCWMTSFactory(TilerFactory):
             collectionId: Annotated[
                 str,
                 Path(
-                    description="Layer Identifier",
+                    description="Layer Identifier (Collection ID)",
                     alias="LAYER",
                 ),
             ],
@@ -1365,29 +960,27 @@ class OGCWMTSFactory(TilerFactory):
                     alias="FORMAT",
                 ),
             ],
-            api_params=Depends(self.path_dependency),
+            backend_params=Depends(self.backend_dependency),
+            reader_params=Depends(self.reader_dependency),
+            assets_accessor_params=Depends(self.assets_accessor_dependency),
             layer_params=Depends(self.layer_dependency),
             dataset_params=Depends(self.dataset_dependency),
             pixel_selection=Depends(self.pixel_selection_dependency),
             tile_params=Depends(self.tile_dependency),
             post_process=Depends(self.process_dependency),
-            rescale=Depends(self.rescale_dependency),
-            color_formula=Depends(ColorFormulaParams),
             colormap=Depends(self.colormap_dependency),
             render_params=Depends(self.render_dependency),
-            backend_params=Depends(self.backend_dependency),
-            reader_params=Depends(self.reader_dependency),
             env=Depends(self.environment_dependency),
         ):
-            """OGC WMTS GetTile (REST encoding)"""
-            search_query = {"collections": [collectionId], "datetime": timeId}
+            """OGC WMTS GetTile (REST encoding) used in WMTS TileURLTemplate."""
+            search_query: Search = {"collections": [collectionId], "datetime": timeId}
 
             tms = self.supported_tms.get(tileMatrixSetId)
             with rasterio.Env(**env):
                 with self.backend(
-                    url=api_params["api_url"],
-                    headers=api_params.get("headers", {}),
+                    search_query,
                     tms=tms,
+                    reader=self.dataset_reader,
                     reader_options={**reader_params.as_dict()},
                     **backend_params.as_dict(),
                 ) as src_dst:
@@ -1403,8 +996,8 @@ class OGCWMTSFactory(TilerFactory):
                         x,
                         y,
                         z,
-                        search_query=search_query,
                         tilesize=256,
+                        search_options=assets_accessor_params.as_dict(),
                         pixel_selection=pixel_selection,
                         threads=MOSAIC_THREADS,
                         **tile_params.as_dict(),
@@ -1415,17 +1008,28 @@ class OGCWMTSFactory(TilerFactory):
             if post_process:
                 image = post_process(image)
 
-            if rescale:
-                image.rescale(rescale)
-
-            if color_formula:
-                image.apply_color_formula(color_formula)
-
             content, media_type = render_image(
                 image,
                 output_format=format,
                 colormap=colormap,
                 **render_params.as_dict(),
             )
+
+            headers: Dict[str, str] = {}
+            if OptionalHeader.x_assets in self.optional_headers:
+                headers["X-Assets"] = ",".join(assets)
+
+            if image.bounds is not None:
+                headers["Content-Bbox"] = ",".join(map(str, image.bounds))
+            if uri := CRS_to_uri(image.crs):
+                headers["Content-Crs"] = f"<{uri}>"
+
+            if (
+                OptionalHeader.server_timing in self.optional_headers
+                and image.metadata.get("timings")
+            ):
+                headers["Server-Timing"] = ", ".join(
+                    [f"{name};dur={time}" for (name, time) in image.metadata["timings"]]
+                )
 
             return Response(content, media_type=media_type)

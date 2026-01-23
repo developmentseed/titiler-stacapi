@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pystac
 
 from titiler.core import dependencies
+from titiler.stacapi.dependencies import APIParams
 from titiler.stacapi.factory import get_dependency_params, get_layer_from_collections
 
 catalog_json = os.path.join(os.path.dirname(__file__), "fixtures", "catalog.json")
@@ -23,7 +24,8 @@ def test_render(client):
         client.open.return_value.get_collections.return_value = collections
 
     collections_render = get_layer_from_collections(
-        "https://something.stac", None, None
+        APIParams(url="https://something.stac"),
+        None,
     )
     assert len(collections_render) == 4
 
@@ -46,8 +48,8 @@ def test_render(client):
         "render"
     ]
     assert isinstance(visualr["rescale"][0], str)
-    rescale = get_dependency_params(
-        dependency=dependencies.RescalingParams,
+    rendering = get_dependency_params(
+        dependency=dependencies.RenderingParams,
         query_params=visualr,
     )
-    assert rescale
+    assert rendering.rescale
