@@ -3,6 +3,18 @@
 ## [Unreleased]
 
 * update titiler requirements to `>=1.0,<1.1`
+* add support for python 3.14
+* update type hints for python >=3.11
+* move and rename `titiler.stacapi.backend.CustomSTACReader` to `titiler.stacapi.reader.SimpleSTACReader`
+* delete `utils` sub-module (utility functions have been moved to `titiler.core`)
+* rename `titiler.stacapi.reader.STACReader` to `STACAPIReader`
+* add `ids`, `filter-lang` and `filter` parameters to collection's queries
+* refactor `STACAPIBackend` to use rio-tiler's mosaic backend
+* add `/conformance` endpoint
+* replace `/debug` endpoint by `/healthz`
+* add more links to the landing page
+* add WMTS extensions to the Items and Collections endpoints
+* remove custom `MosaicTilerFactory` and default to the one from `titiler.mosaic`
 
 ## [0.4.0] - 2025-11-06
 

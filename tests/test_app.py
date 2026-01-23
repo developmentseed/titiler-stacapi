@@ -79,7 +79,7 @@ def test_docs(app):
 
 def test_debug(app):
     """Test / endpoint."""
-    response = app.get("/debug")
+    response = app.get("/healthz")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
