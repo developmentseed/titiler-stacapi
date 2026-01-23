@@ -44,7 +44,7 @@ from titiler.stacapi.dependencies import (
 )
 from titiler.stacapi.enums import MediaType
 from titiler.stacapi.errors import STACAPI_STATUS_CODES
-from titiler.stacapi.factory import OGCWMTSFactory
+from titiler.stacapi.factory import OGCEndpointsFactory
 from titiler.stacapi.reader import SimpleSTACReader, STACAPIReader
 from titiler.stacapi.settings import ApiSettings, STACAPISettings
 
@@ -125,16 +125,16 @@ APP_CONFORMS_TO = {
 supported_tms = TileMatrixSets(
     {"WebMercatorQuad": morecantile.tms.get("WebMercatorQuad")}
 )
-wmts = OGCWMTSFactory(
+ogc_endpoints = OGCEndpointsFactory(
     supported_tms=supported_tms,
     optional_headers=optional_headers,
     templates=templates,
 )
 app.include_router(
-    wmts.router,
+    ogc_endpoints.router,
     tags=["OGC Web Map Tile Service"],
 )
-APP_CONFORMS_TO.update(wmts.conforms_to)
+APP_CONFORMS_TO.update(ogc_endpoints.conforms_to)
 
 ###############################################################################
 # STAC COLLECTION Endpoints
