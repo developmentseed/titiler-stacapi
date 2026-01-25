@@ -320,7 +320,7 @@ class OGCEndpointsFactory(BaseFactory):
     environment_dependency: Callable[..., Dict] = field(default=lambda: {})
 
     supported_tms: TileMatrixSets = morecantile_tms
-    supported_crs: List[str] = field(default_factory=lambda: ["EPSG:4326"])
+    supported_crs: List[str] = field(factory=lambda: ["EPSG:4326"])
 
     optional_headers: List[OptionalHeader] = field(factory=list)
 
@@ -856,7 +856,7 @@ class OGCEndpointsFactory(BaseFactory):
             if version not in self.supported_wmts_version:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid 'VERSION' parameter: {version}. Allowed versions include: {self.supported_version}",
+                    detail=f"Invalid 'VERSION' parameter: {version}. Allowed versions include: {self.supported_wmts_version}",
                 )
 
             # Request is mandatory
