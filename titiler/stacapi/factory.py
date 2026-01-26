@@ -1420,6 +1420,7 @@ class OGCEndpointsFactory(BaseFactory):
             Capabilities:
                 - GetCapability generates a WMS XML definition.
                 - GetMap returns an Image
+                - GetFeatureInfo returns pixel values
 
             """
             req = {k.lower(): v for k, v in request.query_params.items()}
