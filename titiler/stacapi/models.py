@@ -40,6 +40,6 @@ class LayerDict(TypedDict, total=False):
     format: str | None
     style: str
     render: dict | None
-    tilematrixsets: dict[str, list[TMSLimits]]
+    tilematrixsets: dict[str, list[TMSLimits]] | None
     time: list[str] | None
     query_string: str
