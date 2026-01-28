@@ -15,6 +15,7 @@
 * add more links to the landing page
 * add WMTS extensions to the Items and Collections endpoints
 * remove custom `MosaicTilerFactory` and default to the one from `titiler.mosaic`
+* remove unused `STACSettings`. Alternate HREF key env needs to be defined using `RIO_TILER_STAC_ALTERNATE_KEY`
 
 ## [0.4.0] - 2025-11-06
 
