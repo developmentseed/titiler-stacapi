@@ -1471,11 +1471,13 @@ class OGCEndpointsFactory(BaseFactory):
             #         detail=f"Invalid 'LAYERS' parameter: {inlayers}.",
             #     )
 
-            layers = get_layer_from_collections(backend_params.api_params)
+            layers = get_layer_from_collections(
+                backend_params.api_params, supported_tms=self.supported_tms
+            )
 
             # GetCapabilities: Return a WMS XML
             if request_type.lower() == "getcapabilities":
-                wms_url = self.url_for(request, "wms")
+                wms_url = self.url_for(request, "web_map_service")
 
                 qs_key_to_remove = [
                     "service",
