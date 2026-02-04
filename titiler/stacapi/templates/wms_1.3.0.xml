@@ -2,9 +2,8 @@
 <WMS_Capabilities version="1.3.0">
 
 <Service>
-  <Name>TiTiler WMS</Name>
-  <Title>TiTiler WMS</Title>
-  <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
+  <Name>titiler-stacapi-WMS</Name>
+  <Title>titiler-stacapi-WMS</Title>
 </Service>
 
 <Capability>
@@ -46,9 +45,8 @@
   </Exception>
 
   <Layer>
-    <Name>TiTiler WMS</Name>
-    <Title>TiTiler WMS</Title>
-    <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
+    <Name>titiler-stacapi-WMS</Name>
+    <Title>titiler-stacapi-WMS</Title>
     
     {% for crs in available_epsgs %}
     <CRS>{{crs}}</CRS>
@@ -72,6 +70,17 @@
         {% for crs in available_epsgs %}
         <CRS>{{crs}}</CRS>
         {% endfor %}
+        <Dimension>
+        {% if layer.time %}
+          <ows:Identifier>TIME</ows:Identifier>
+          <Default>{{ layer.time[-1] }}</Default>
+          {% for date in layer.time %}
+          <Value>{{ date }}</Value>
+          {% endfor %}
+        {% else %}
+          <Default>_empty</Default>
+        {% endif %}
+        </Dimension>
         <EX_GeographicBoundingBox>
             <westBoundLongitude>{{layers_dict[layer]['bounds_wgs84'][0]}}</westBoundLongitude>
             <eastBoundLongitude>{{layers_dict[layer]['bounds_wgs84'][2]}}</eastBoundLongitude>

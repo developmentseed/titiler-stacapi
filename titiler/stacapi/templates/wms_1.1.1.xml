@@ -2,9 +2,8 @@
 <WMT_MS_Capabilities version="1.1.1">
 
 <Service>
-  <Name>TiTiler WMS</Name>
-  <Title>TiTiler WMS</Title>
-  <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
+  <Name>titiler-stacapi-WMS</Name>
+  <Title>titiler-stacapi-WMS</Title>
 </Service>
 
 <Capability>
@@ -48,7 +47,6 @@
   <Layer>
     <Name>TiTiler WMS</Name>
     <Title>TiTiler WMS</Title>
-    <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
 
     {% for srs in available_epsgs %}
     <SRS>{{srs}}</SRS>
@@ -62,6 +60,17 @@
         <Name>{{layer}}</Name>
         <Title>{{layer}}</Title>
         <Abstract>{{layers_dict[layer]['abstract']}}</Abstract>
+        <Dimension>
+        {% if layer.time %}
+          <ows:Identifier>TIME</ows:Identifier>
+          <Default>{{ layer.time[-1] }}</Default>
+          {% for date in layer.time %}
+          <Value>{{ date }}</Value>
+          {% endfor %}
+        {% else %}
+          <Default>_empty</Default>
+        {% endif %}
+        </Dimension>
         {% for srs in available_epsgs %}
         <SRS>{{srs}}</SRS>
         {% endfor %}

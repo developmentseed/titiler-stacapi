@@ -2,9 +2,8 @@
 <WMT_MS_Capabilities version="1.0.0">
 
 <Service>
-  <Name>TiTiler WMS</Name>
-  <Title>TiTiler WMS</Title>
-  <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
+  <Name>titiler-stacapi-WMS</Name>
+  <Title>titiler-stacapi-WMS</Title>
 </Service>
 
 <Capability>
@@ -42,9 +41,8 @@
   </Exception>
   <VendorSpecificCapabilities />
   <Layer>
-    <Name>FastAPI WMS</Name>
-    <Title>FastAPI WMS</Title>
-    <Abstract>COGs specified in the "LAYERS" parameter will show up as available layers</Abstract>
+    <Name>titiler-stacapi-WMS</Name>
+    <Title>titiler-stacapi-WMS</Title>
     <SRS>{{" ".join(available_epsgs)}}</SRS>
     <LatLonBoundingBox minx="{{service_dict['xmin']}}" miny="{{service_dict['ymin']}}" maxx="{{service_dict['xmax']}}" maxy="{{service_dict['ymax']}}" />
     <BoundingBox SRS="EPSG:4326"
