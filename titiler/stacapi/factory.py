@@ -115,12 +115,12 @@ class MediaType(str, Enum):
     webp = "image/webp"
 
 
-def _create_hashkey(api_params: APIParams, tms: TileMatrixSets | None = None):
+def _create_hashkey(api_params: APIParams, supported_tms: TileMatrixSets | None = None):
     """Create a hashkey for caching."""
     return hashkey(
         api_params["url"],
         json.dumps(api_params.get("headers", {})),
-        ",".join(tms.list()) if tms else "",
+        ",".join(supported_tms.list()) if supported_tms else "",
     )
 
 
