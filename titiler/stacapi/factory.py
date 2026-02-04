@@ -5,6 +5,7 @@ import json
 import os
 from copy import copy
 from enum import Enum
+from threading import Lock
 from typing import Any, Callable, Dict, List, Literal, Optional, Type, cast
 from urllib.parse import urlencode
 
@@ -114,12 +115,16 @@ class MediaType(str, Enum):
     webp = "image/webp"
 
 
-@cached(  # type: ignore
-    ttl_cache,
-    key=lambda api_params, supported_tms: hashkey(
-        api_params["url"], json.dumps(api_params.get("headers", {}))
-    ),
-)
+def _create_hashkey(api_params: APIParams, tms: TileMatrixSets | None = None):
+    """Create a hashkey for caching."""
+    return hashkey(
+        api_params["url"],
+        json.dumps(api_params.get("headers", {})),
+        ",".join(tms.list()) if tms else "",
+    )
+
+
+@cached(ttl_cache, key=_create_hashkey, lock=Lock())  # type: ignore
 def get_layer_from_collections(  # noqa: C901
     api_params: APIParams,
     supported_tms: TileMatrixSets | None = None,
@@ -336,9 +341,7 @@ class OGCEndpointsFactory(BaseFactory):
     )
 
     supported_wmts_version: List[str] = field(factory=lambda: ["1.0.0"])
-    supported_wms_version: List[str] = field(
-        factory=lambda: ["1.0.0", "1.1.1", "1.3.0"]
-    )
+    supported_wms_version: List[str] = field(factory=lambda: ["1.3.0"])
 
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
@@ -1253,8 +1256,6 @@ class OGCEndpointsFactory(BaseFactory):
                             "title": "WMS Request version",
                             "type": "string",
                             "enum": [
-                                "1.1.0",
-                                "1.1.1",
                                 "1.3.0",
                             ],
                         },
@@ -1471,9 +1472,7 @@ class OGCEndpointsFactory(BaseFactory):
             #         detail=f"Invalid 'LAYERS' parameter: {inlayers}.",
             #     )
 
-            layers = get_layer_from_collections(
-                backend_params.api_params, supported_tms=self.supported_tms
-            )
+            layers = get_layer_from_collections(backend_params.api_params)
 
             # GetCapabilities: Return a WMS XML
             if request_type.lower() == "getcapabilities":
@@ -1502,6 +1501,7 @@ class OGCEndpointsFactory(BaseFactory):
                     layers_dict[lay]["srs"] = "EPSG:4326"
                     layers_dict[lay]["bounds"] = layers[lay]["bbox"]  # type: ignore
                     layers_dict[lay]["bounds_wgs84"] = layers[lay]["bbox"]  # type: ignore
+                    layers_dict[lay]["time"] = layers[lay].get("time", [])
 
                 # Build information for the whole service
                 minx, miny, maxx, maxy = zip(
