@@ -645,6 +645,15 @@ class OGCEndpointsFactory(BaseFactory):
         if rendering.color_formula:
             image.apply_color_formula(rendering.color_formula)
 
+        colormap = get_dependency_params(
+            dependency=self.colormap_dependency,
+            query_params={"colormap": req["colormap"]}
+            if "colormap" in req
+            else layer.get("render") or {},
+        )
+        if colormap:
+            image = image.apply_colormap(colormap)
+
         return image
 
     def register_routes(self):  # noqa: C901
@@ -1232,21 +1241,21 @@ class OGCEndpointsFactory(BaseFactory):
                     {
                         "required": True,
                         "schema": {
-                            "title": "Request name",
-                            "type": "string",
-                            "enum": ["GetCapabilities", "GetMap", "GetFeatureInfo"],
-                        },
-                        "name": "REQUEST",
-                        "in": "query",
-                    },
-                    {
-                        "required": False,
-                        "schema": {
                             "title": "WMS Service type",
                             "type": "string",
                             "enum": ["wms"],
                         },
                         "name": "SERVICE",
+                        "in": "query",
+                    },
+                    {
+                        "required": True,
+                        "schema": {
+                            "title": "Request name",
+                            "type": "string",
+                            "enum": ["GetCapabilities", "GetMap", "GetFeatureInfo"],
+                        },
+                        "name": "REQUEST",
                         "in": "query",
                     },
                     {
@@ -1262,7 +1271,7 @@ class OGCEndpointsFactory(BaseFactory):
                         "in": "query",
                     },
                     {
-                        "required": True,
+                        "required": False,
                         "schema": {
                             "title": "Comma-separated list of one or more map layers."
                         },
@@ -1286,6 +1295,18 @@ class OGCEndpointsFactory(BaseFactory):
                             ],
                         },
                         "name": "FORMAT",
+                        "in": "query",
+                    },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Output format of service metadata/map",
+                            "type": "string",
+                            "enum": [
+                                "application/geo+json",
+                            ],
+                        },
+                        "name": "INFO_FORMAT",
                         "in": "query",
                     },
                     {
@@ -1535,7 +1556,7 @@ class OGCEndpointsFactory(BaseFactory):
                     media_type="application/xml",
                 )
 
-            elif request_type.lower() == "getmap":
+            elif request_type.lower() in ["getmap", "getfeatureinfo"]:
                 req_keys = {
                     "layers",
                     "styles",
@@ -1545,6 +1566,10 @@ class OGCEndpointsFactory(BaseFactory):
                     "height",
                     "format",
                 }
+                if request_type.lower() == "getfeatureinfo":
+                    req_keys.update({"query_layers", "i", "j", "info_format"})
+                else:
+                    req_keys.update({"format"})
 
                 intrs = set(req.keys()).intersection(req_keys)
                 missing_keys = req_keys.difference(intrs)
@@ -1553,15 +1578,6 @@ class OGCEndpointsFactory(BaseFactory):
                         status_code=400,
                         detail=f"Missing '{request_type}' parameters: {missing_keys}",
                     )
-
-                # TODO: code should be InvalidFormat
-                if req["format"] not in self.supported_format:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Invalid 'FORMAT' parameter: {req['format']}. Should be one of {self.supported_format}.",
-                    )
-
-                output_format = ImageType(MediaType(req["format"]).name)
 
                 # TODO: Implement background color
                 # height, width = int(req["height"]), int(req["width"])
@@ -1578,6 +1594,13 @@ class OGCEndpointsFactory(BaseFactory):
                 #     bg_image = ImageData(array=numpy.ma.masked_array(arr, mask=mask))
 
                 req_layers = req["layers"].split(",")
+                if request_type.lower() == "getfeatureinfo":
+                    query_layers = req["query_layers"].split(",")
+                    if set(query_layers).difference(set(req_layers)):
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Invalid 'QUERY_LAYERS' parameter: {req['query_layers']}. Should be a subset of LAYERS {req['layers']}.",
+                        )
 
                 req_styles = req["styles"].split(",")
                 if len(req_styles) > 1 and len(req_styles) != len(req_layers):
@@ -1599,7 +1622,7 @@ class OGCEndpointsFactory(BaseFactory):
                             detail=f"Invalid 'TRANSPARENT' parameter: {transparent}. Should be one of ['FALSE', 'TRUE'].",
                         )
 
-                images: list[ImageData] = []
+                images: list[tuple[str, ImageData]] = []
                 for idx, name in enumerate(req_layers):
                     style = (
                         req_styles[0] if len(req_styles) == 1 else req_styles[idx]
@@ -1615,31 +1638,78 @@ class OGCEndpointsFactory(BaseFactory):
                     layer = layers[name]
 
                     # TODO: code should be StyleNotDefined
-                    if style != layer["style"]:
+                    if style != layer.get("style", "default"):
                         raise HTTPException(
                             status_code=400,
                             detail=f"Invalid STYLE '{req_styles[0]}' for layer {layer['id']}",
                         )
 
-                    img = self.get_map_data(
-                        req,
-                        layer,
-                        api_params=backend_params.api_params,
+                    images.append(
+                        (
+                            layer["id"],
+                            self.get_map_data(
+                                req,
+                                layer,
+                                api_params=backend_params.api_params,
+                            ),
+                        )
                     )
 
-                    colormap = get_dependency_params(
-                        dependency=self.colormap_dependency,
-                        query_params={"colormap": req["colormap"]}
-                        if "colormap" in req
-                        else layer.get("render") or {},
+                # GetFeatureInfo Response
+                if request_type.lower() == "getfeatureinfo":
+                    if req["info_format"] not in ["application/geo+json"]:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Invalid 'INFO_FORMAT' parameter: {req['info_format']}. Should be one of {['application/geo+json']}.",
+                        )
+
+                    i = int(req["i"])
+                    j = int(req["j"])
+                    geojson: dict[str, Any] = {
+                        "type": "FeatureCollection",
+                        "features": [],
+                    }
+                    base_image = images[0][1]
+                    ys, xs = rowcol_to_coords(base_image.transform, [j], [i])
+                    xs_wgs84, ys_wgs84 = transform_points(  # type: ignore
+                        base_image.crs, "epsg:4326", xs, ys
                     )
-                    if colormap:
-                        img = img.apply_colormap(colormap)
 
-                    images.append(img)
+                    for name, image in images:
+                        bands = {
+                            f"band_{idx + 1}": image.data[idx, j, i].item()
+                            for idx in range(image.count)
+                        }
+                        geojson["features"].append(
+                            {
+                                "type": "Feature",
+                                "id": name,
+                                "geometry": {
+                                    "type": "Point",
+                                    "coordinates": (xs_wgs84[0], ys_wgs84[0]),
+                                },
+                                "properties": {
+                                    **bands,
+                                    "I": i,
+                                    "J": j,
+                                    "dimension": {"time": req.get("time")},
+                                },
+                            }
+                        )
 
-                image = overlay_layers(images)
+                    return GeoJSONResponse(geojson)
 
+                # TODO: code should be InvalidFormat
+                if req["format"] not in self.supported_format:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid 'FORMAT' parameter: {req['format']}. Should be one of {self.supported_format}.",
+                    )
+
+                output_format = ImageType(MediaType(req["format"]).name)
+
+                # Merge all layers into one image (if more than 1) and apply colormap if needed
+                image = overlay_layers([im for _, im in images])
                 content, _ = render_image(
                     image,
                     output_format=output_format,
@@ -1663,60 +1733,13 @@ class OGCEndpointsFactory(BaseFactory):
                         ]
                     )
 
+                #  GetMap Response
                 return Response(
                     content, media_type=output_format.mediatype, headers=headers
                 )
 
-            elif request_type.lower() == "getfeatureinfo":
-                # Required parameters:
-                # - LAYERS
-                # - CRS or SRS
-                # - BBOX
-                # - WIDTH
-                # - HEIGHT
-                # - QUERY_LAYERS
-                # - I (Pixel column)
-                # - J (Pixel row)
-                # Optional parameters: INFO_FORMAT, FEATURE_COUNT, ...
-
-                req_keys = {
-                    "version",
-                    "request",
-                    "layers",
-                    "width",
-                    "height",
-                    "query_layers",
-                    "i",
-                    "j",
-                }
-
-                if req["layers"] not in layers:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Invalid 'LAYER' parameter: {req['layer']}. Should be one of {list(layers)}.",
-                    )
-
-                layer = layers[req["layers"]]
-
-                image = self.get_map_data(
-                    req,
-                    layer,
-                    api_params=backend_params.api_params,
-                )
-                i = int(req["i"])
-                j = int(req["j"])
-
-                html_content = ""
-                bands_info = []
-                for band in range(image.count):
-                    pixel_value = image.data[band, j, i]
-                    bands_info.append(pixel_value)
-
-                html_content = ",".join([str(band_info) for band_info in bands_info])
-                return Response(html_content, 200)
-
             else:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid 'REQUEST' parameter: {request_type}. Should be one of ['GetCapabilities', 'GetMap'].",
+                    detail=f"Invalid 'REQUEST' parameter: {request_type}. Should be one of ['GetCapabilities', 'GetMap', 'GetFeatureInfo'].",
                 )

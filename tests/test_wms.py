@@ -119,7 +119,7 @@ def test_wms_getcapabilities(client, app):
 @patch("titiler.stacapi.backend.ItemSearch")
 @patch("titiler.stacapi.factory.Client")
 def test_wms_getmap(client, item_search, rio, app):
-    """test WMS Get Map endpoints."""
+    """test WMS GetMap endpoint."""
     rio.open = mock_rasterio_open
 
     with open(catalog_json, "r") as f:
@@ -332,271 +332,103 @@ def test_wms_getmap(client, item_search, rio, app):
     assert profile["height"] == 256
 
 
-# @patch("rio_tiler.io.rasterio.rasterio")
-# @patch("titiler.stacapi.backend.ItemSearch")
-# @patch("titiler.stacapi.factory.Client")
-# def test_wmts_gettile_param_override(client, item_search, rio, app):
-#     """test STAC items endpoints."""
+@patch("rio_tiler.io.rasterio.rasterio")
+@patch("titiler.stacapi.backend.ItemSearch")
+@patch("titiler.stacapi.factory.Client")
+def test_wms_getfeatureinfo(client, item_search, rio, app):
+    """test WMS GetFeatureInfo endpoint."""
+    rio.open = mock_rasterio_open
 
-#     with open(catalog_json, "r") as f:
-#         collections = [
-#             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
-#         ]
-#         client.open.return_value.get_collections.return_value = collections
+    with open(catalog_json, "r") as f:
+        collections = [
+            pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
+        ]
+        client.open.return_value.get_collections.return_value = collections
 
-#     with open(item_json, "r") as f:
-#         item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
+    with open(item_json, "r") as f:
+        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
 
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "SERVICE": "WMTS",
-#             "VERSION": "1.0.0",
-#             "REQUEST": "getTile",
-#             "LAYER": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
-#             "STYLE": "default",
-#             "FORMAT": "image/png",
-#             "TILEMATRIXSET": "WebMercatorQuad",
-#             "TILEMATRIX": 14,
-#             "TILEROW": 7188,
-#             "TILECOL": 12375,
-#             "TIME": "2023-01-05",
-#             "expression": "(where(visual_invalid >= 0))",
-#         },
-#     )
-#     assert response.status_code == 500
-#     assert "Could not find any valid assets" in response.json()["detail"]
+    # missing parameters
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "getfeatureinfo",
+        },
+    )
+    assert response.status_code == 400
 
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "SERVICE": "WMTS",
-#             "VERSION": "1.0.0",
-#             "REQUEST": "getTile",
-#             "LAYER": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "STYLE": "default",
-#             "FORMAT": "image/png",
-#             "TILEMATRIXSET": "WebMercatorQuad",
-#             "TILEMATRIX": 14,
-#             "TILEROW": 7188,
-#             "TILECOL": 12375,
-#             "TIME": "2023-01-05",
-#             "colormap": "{invalid}",
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Could not parse the colormap value" in response.json()["detail"]
+    # invalid INFO_FORMAT
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetFeatureInfo",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857 ",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+            "TIME": "2023-01-05",
+            "INFO_FORMAT": "application/json",
+            "I": 100,
+            "J": 100,
+            "QUERY_LAYERS": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+        },
+    )
+    assert response.status_code == 400
 
+    # bad qyery layer
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetFeatureInfo",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857 ",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+            "TIME": "2023-01-05",
+            "INFO_FORMAT": "application/geo+json",
+            "I": 100,
+            "J": 100,
+            "QUERY_LAYERS": "MAXAR_BayofBengal_Cyclone_Mocha_May_23",
+        },
+    )
+    assert response.status_code == 400
 
-# @patch("rio_tiler.io.rasterio.rasterio")
-# @patch("titiler.stacapi.backend.ItemSearch")
-# @patch("titiler.stacapi.factory.Client")
-# def test_wmts_getfeatureinfo(client, item_search, rio, app):
-#     """test STAC items endpoints."""
-#     rio.open = mock_rasterio_open
-
-#     with open(catalog_json, "r") as f:
-#         collections = [
-#             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
-#         ]
-#         client.open.return_value.get_collections.return_value = collections
-
-#     with open(item_json, "r") as f:
-#         item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
-
-#     # missing keys
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#         },
-#     )
-#     assert response.status_code == 400
-
-#     # invalid infoformat
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
-#             "style": "",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 0,
-#             "tilerow": 0,
-#             "tilecol": 0,
-#             "TIME": "2023-01-05",
-#             "infoformat": "application/xml",
-#             "i": 0,
-#             "j": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Invalid 'InfoFormat' parameter:" in response.json()["detail"]
-
-#     # invalid layer
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr",
-#             "style": "",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 0,
-#             "tilerow": 0,
-#             "tilecol": 0,
-#             "infoformat": "application/geo+json",
-#             "i": 0,
-#             "j": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert (
-#         "Invalid 'LAYER' parameter: MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr"
-#         in response.json()["detail"]
-#     )
-
-#     # invalid style
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "something",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 0,
-#             "tilerow": 0,
-#             "tilecol": 0,
-#             "infoformat": "application/geo+json",
-#             "i": 0,
-#             "j": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Invalid STYLE parameters something" in response.json()["detail"]
-
-#     # Missing Time
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 15,
-#             "tilerow": 12849,
-#             "tilecol": 8589,
-#             "infoformat": "application/geo+json",
-#             "i": 0,
-#             "j": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Missing 'TIME' parameter" in response.json()["detail"]
-
-#     # Invalid Time
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 15,
-#             "tilerow": 12849,
-#             "tilecol": 8589,
-#             "TIME": "2000-01-01",
-#             "infoformat": "application/geo+json",
-#             "i": 0,
-#             "j": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Invalid 'TIME' parameter:" in response.json()["detail"]
-
-#     # Invalid TMS
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQua",
-#             "tilematrix": 15,
-#             "tilerow": 12849,
-#             "tilecol": 8589,
-#             "TIME": "2023-01-05",
-#             "infoformat": "application/geo+json",
-#             "i": 0,
-#             "j": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Invalid 'TILEMATRIXSET' parameter" in response.json()["detail"]
-
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "getfeatureinfo",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 14,
-#             "tilerow": 7188,
-#             "tilecol": 12375,
-#             "TIME": "2023-01-05",
-#             "infoformat": "application/geo+json",
-#             "i": 0,
-#             "j": 0,
-#         },
-#     )
-#     assert response.status_code == 200
-
-
-# @patch("rio_tiler.io.rasterio.rasterio")
-# @patch("titiler.stacapi.backend.ItemSearch")
-# @patch("titiler.stacapi.factory.Client")
-# def test_wmts_gettile_REST(client, item_search, rio, app):
-#     """test STAC items endpoints."""
-#     rio.open = mock_rasterio_open
-
-#     with open(catalog_json, "r") as f:
-#         collections = [
-#             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
-#         ]
-#         client.open.return_value.get_collections.return_value = collections
-
-#     with open(item_json, "r") as f:
-#         item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
-
-#     # missing keys
-#     response = app.get(
-#         "/layers/MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual/default/2023-01-05/WebMercatorQuad/14/12375/7188.png",
-#         params={
-#             "assets": ["visual"],
-#             "asset_bidx": ["visual|1,2,3"],
-#         },
-#     )
-#     assert response.headers["content-type"] == "image/png"
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetFeatureInfo",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857 ",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+            "TIME": "2023-01-05",
+            "INFO_FORMAT": "application/geo+json",
+            "I": 100,
+            "J": 100,
+            "QUERY_LAYERS": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    geojson = response.json()
+    assert len(geojson["features"]) == 1  # one layer
+    assert (
+        geojson["features"][0]["id"] == "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"
+    )
