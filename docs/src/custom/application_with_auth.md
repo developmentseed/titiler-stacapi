@@ -23,7 +23,7 @@ from titiler.core.middleware import CacheControlMiddleware
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.stacapi import __version__ as titiler_stacapi_version
 from titiler.stacapi.dependencies import APIParams
-from titiler.stacapi.factory import OGCWMTSFactory
+from titiler.stacapi.factory import OGCEndpointsFactory
 from titiler.stacapi.settings import ApiSettings, STACAPISettings
 
 settings = ApiSettings()
@@ -84,7 +84,7 @@ supported_tms = morecantile.TileMatrixSets({"EPSG3857": morecantile.TileMatrixSe
 
 ###############################################################################
 # OGC WMTS Endpoints
-wmts = OGCWMTSFactory(
+wmts = OGCEndpointsFactory(
     backend_dependency=BackendParams,
     supported_tms=supported_tms,
 )

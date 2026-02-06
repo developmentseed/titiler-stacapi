@@ -1,4 +1,4 @@
-"""Test titiler.stacapi Item endpoints."""
+"""Test titiler.stacapi WMTS endpoints."""
 
 import json
 import os

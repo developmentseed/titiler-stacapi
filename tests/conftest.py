@@ -1,12 +1,21 @@
 """titiler.stacapi tests configuration."""
 
 import os
+from typing import Any
 
 import pytest
 import rasterio
 from fastapi.testclient import TestClient
+from rasterio.io import MemoryFile
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
+
+
+def parse_img(content: bytes) -> dict[Any, Any]:
+    """Read tile image and return metadata."""
+    with MemoryFile(content) as mem:
+        with mem.open() as dst:
+            return dst.profile
 
 
 @pytest.fixture
