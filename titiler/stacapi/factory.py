@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Type, cast
 from urllib.parse import urlencode
 
 import jinja2
+import numpy
 import rasterio
 from attrs import define, field
 from cachetools import TTLCache, cached
@@ -47,7 +48,6 @@ from titiler.core.factory import BaseFactory, img_endpoint_params
 from titiler.core.resources.enums import ImageType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse
 from titiler.core.utils import render_image, tms_limits
-from titiler.extensions.wms import OverlayMethod
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import (
@@ -113,6 +113,19 @@ class MediaType(str, Enum):
     jpeg = "image/jpeg"
     jpg = "image/jpg"
     webp = "image/webp"
+
+
+def overlay_layers(image: list[ImageData]) -> ImageData:
+    """Overlay multiple ImageData."""
+    imgs = iter(image)
+    first_image = next(imgs)
+    for img in imgs:
+        pidex = first_image.array.mask & ~img.array.mask
+        mask = numpy.where(pidex, img.array.mask, first_image.array.mask)
+        first_image = numpy.ma.where(pidex, img.array, first_image.array)
+        first_image.mask = mask
+
+    return first_image
 
 
 def _create_hashkey(api_params: APIParams, supported_tms: TileMatrixSets | None = None):
@@ -325,7 +338,7 @@ class OGCEndpointsFactory(BaseFactory):
     environment_dependency: Callable[..., Dict] = field(default=lambda: {})
 
     supported_tms: TileMatrixSets = morecantile_tms
-    supported_crs: List[str] = field(factory=lambda: ["EPSG:4326"])
+    supported_crs: List[str] = field(factory=lambda: ["EPSG:4326", "EPSG:3857"])
 
     optional_headers: List[OptionalHeader] = field(factory=list)
 
@@ -485,41 +498,25 @@ class OGCEndpointsFactory(BaseFactory):
     def get_map_data(  # noqa: C901
         self,
         req: dict,
-        req_keys: set,
-        request_type: str,
         layer: LayerDict,
         api_params: APIParams,
-        version: str,
     ) -> ImageData:
         """Get Map data."""
-        # Required parameters:
-        # - LAYERS
-        # - STYLES
-        # - CRS
-        # - BBOX
-        # - WIDTH
-        # - HEIGHT
-        # - FORMAT
-        # Optional parameters: TRANSPARENT, BGCOLOR, EXCEPTIONS, TIME, ELEVATION, ...
-        intrs = set(req.keys()).intersection(req_keys)
-        missing_keys = req_keys.difference(intrs)
-        if len(missing_keys) > 0:
+        try:
+            crs = CRS.from_user_input(req["crs"])
+        except Exception as e:
+            # TODO: code should be InvalidCRS
+            raise HTTPException(
+                status_code=400, detail=f"Invalid 'CRS' parameter: {req['crs']}."
+            ) from e
+
+        if crs not in self.supported_crs:
             raise HTTPException(
                 status_code=400,
-                detail=f"Missing '{request_type}' parameters: {missing_keys}",
+                detail=f"Unsupported 'CRS' parameter: {req['crs']}. Supported CRS include: {self.supported_crs}",
             )
 
-        if not set(req.keys()).intersection({"crs", "srs"}):
-            raise HTTPException(
-                status_code=400, detail="Missing 'CRS' or 'SRS parameters."
-            )
-
-        crs_value = req.get("crs", req.get("srs"))
-        if not crs_value:
-            raise HTTPException(status_code=400, detail="Invalid 'CRS' parameter.")
-
-        crs = CRS.from_user_input(crs_value)
-
+        # TODO: validate BBOX
         bbox = list(map(float, req["bbox"].split(",")))
         if len(bbox) != 4:
             raise HTTPException(
@@ -527,22 +524,21 @@ class OGCEndpointsFactory(BaseFactory):
                 detail=f"Invalid 'BBOX' parameters: {req['bbox']}. Needs 4 coordinates separated by commas",
             )
 
-        if version == "1.3.0":
-            # WMS 1.3.0 is lame and flips the coords of EPSG:4326
-            # EPSG:4326 refers to WGS 84 geographic latitude, then longitude.
-            # That is, in this CRS the x axis corresponds to latitude, and the y axis to longitude.
-            if crs == CRS.from_epsg(4326):
-                bbox = [
-                    bbox[1],
-                    bbox[0],
-                    bbox[3],
-                    bbox[2],
-                ]
+        # WMS 1.3.0 is lame and flips the coords of EPSG:4326
+        # EPSG:4326 refers to WGS 84 geographic latitude, then longitude.
+        # That is, in this CRS the x axis corresponds to latitude, and the y axis to longitude.
+        if crs == CRS.from_epsg(4326):
+            bbox = [
+                bbox[1],
+                bbox[0],
+                bbox[3],
+                bbox[2],
+            ]
 
-            # Overwrite CRS:84 with EPSG:4326 when specified
-            # “CRS:84” refers to WGS 84 geographic longitude and latitude expressed in decimal degrees
-            elif crs == CRS.from_user_input("CRS:84"):
-                crs = CRS.from_epsg(4326)
+        # Overwrite CRS:84 with EPSG:4326 when specified
+        # “CRS:84” refers to WGS 84 geographic longitude and latitude expressed in decimal degrees
+        elif crs == CRS.from_user_input("CRS:84"):
+            crs = CRS.from_epsg(4326)
 
         height, width = int(req["height"]), int(req["width"])
 
@@ -551,6 +547,9 @@ class OGCEndpointsFactory(BaseFactory):
         ###########################################################
         query_params = copy(layer.get("render")) or {}
 
+        # TODO: return default time
+        # When providing temporal information, a server should declare a default value in service metadata, and a server shall respond with
+        # the default value if one has been declared and the client request does not include a value.
         layer_time = layer.get("time")
         req_time = req.get("time")
         if layer_time and "time" not in req:
@@ -626,7 +625,6 @@ class OGCEndpointsFactory(BaseFactory):
                 bounds_crs=crs,
                 # STAC Query Params
                 search_options=asset_accessor.as_dict(),
-                pixel_selection=OverlayMethod(),
                 threads=MOSAIC_THREADS,
                 height=height,
                 width=width,
@@ -1351,7 +1349,6 @@ class OGCEndpointsFactory(BaseFactory):
                         "name": "j",
                         "in": "query",
                     },
-                    # Non-Used
                     {
                         "required": False,
                         "schema": {
@@ -1370,16 +1367,6 @@ class OGCEndpointsFactory(BaseFactory):
                         "name": "TRANSPARENT",
                         "in": "query",
                     },
-                    # {
-                    #     "required": False,
-                    #     "schema": {
-                    #         "title": "Hexadecimal red-green-blue colour value for the background color (default=FFFFFF).",
-                    #         "type": "string",
-                    #         "default": "FFFFFF",
-                    #     },
-                    #     "name": "BGCOLOR",
-                    #     "in": "query",
-                    # },
                     {
                         "required": False,
                         "schema": {
@@ -1390,7 +1377,6 @@ class OGCEndpointsFactory(BaseFactory):
                         "name": "EXCEPTIONS",
                         "in": "query",
                     },
-                    # TIME dimension
                     {
                         "required": False,
                         "schema": {
@@ -1400,6 +1386,17 @@ class OGCEndpointsFactory(BaseFactory):
                         "name": "Time",
                         "in": "query",
                     },
+                    # not implemented yet
+                    # {
+                    #     "required": False,
+                    #     "schema": {
+                    #         "title": "Hexadecimal red-green-blue colour value for the background color (default=FFFFFF).",
+                    #         "type": "string",
+                    #         "default": "FFFFFF",
+                    #     },
+                    #     "name": "BGCOLOR",
+                    #     "in": "query",
+                    # },
                     # {
                     #     "required": False,
                     #     "schema": {
@@ -1498,7 +1495,7 @@ class OGCEndpointsFactory(BaseFactory):
                 layers_dict: Dict[str, Any] = {}
                 for lay in layers:
                     layers_dict[lay] = {}
-                    layers_dict[lay]["srs"] = "EPSG:4326"
+                    layers_dict[lay]["crs"] = "EPSG:4326"
                     layers_dict[lay]["bounds"] = layers[lay]["bbox"]  # type: ignore
                     layers_dict[lay]["bounds_wgs84"] = layers[lay]["bbox"]  # type: ignore
                     layers_dict[lay]["time"] = layers[lay].get("time", [])
@@ -1507,6 +1504,16 @@ class OGCEndpointsFactory(BaseFactory):
                 minx, miny, maxx, maxy = zip(
                     *[layers_dict[lay]["bounds_wgs84"] for lay in layers]
                 )
+
+                # TODO: maybe add LayerLimit
+                # The optional <LayerLimit> element in the service metadata is a positive integer indicating the maximum number of
+                # layers a client is permitted to include in a single GetMap request. If this element is absent, the server imposes no
+                # limit.
+
+                # TODO: maybe add MaxWidth and MaxHeight
+                # The optional <MaxWidth> and <MaxHeight> elements in the service metadata are integers indicating the
+                # maximum width and height values that a client is permitted to include in a single GetMap request. If either element
+                # is absent, the server imposes no limit on the corresponding parameter.
 
                 return self.templates.TemplateResponse(
                     request,
@@ -1528,40 +1535,87 @@ class OGCEndpointsFactory(BaseFactory):
                 )
 
             elif request_type.lower() == "getmap":
-                # Required parameters:
-                # - LAYERS
-                # - CRS or SRS
-                # - WIDTH
-                # - HEIGHT
-                # - QUERY_LAYERS
-                # - FORMAT
-                # Optional parameters:
-                # - transparent
-
                 req_keys = {
                     "layers",
+                    "styles",
+                    "crs",
                     "bbox",
                     "width",
                     "height",
                     "format",
                 }
 
-                if req["layers"] not in layers:
+                intrs = set(req.keys()).intersection(req_keys)
+                missing_keys = req_keys.difference(intrs)
+                if len(missing_keys) > 0:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'LAYER' parameter: {req['layer']}. Should be one of {list(layers)}.",
+                        detail=f"Missing '{request_type}' parameters: {missing_keys}",
                     )
 
-                layer = layers[req["layers"]]
+                # TODO: code should be InvalidFormat
+                if req["format"] not in self.supported_format:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid 'FORMAT' parameter: {req['format']}. Should be one of {self.supported_format}.",
+                    )
 
-                image = self.get_map_data(
-                    req,
-                    req_keys,
-                    request_type,
-                    layer,
-                    api_params=backend_params.api_params,
-                    version=version,
-                )
+                output_format = ImageType(MediaType(req["format"]).name)
+
+                # TODO: Implement background color
+                # height, width = int(req["height"]), int(req["width"])
+                # if bgcolor := req.get("bgcolor"):
+                #     # Create ImageData with the background color
+                #     r, g, b, a  = parse_color(bgcolor)
+                #     arr = numpy.zeros((3, height, width))
+                #     arr[0] = r
+                #     arr[1] = g
+                #     arr[2] = b
+
+                #     mask = numpy.zeros((1, height, width), dtype=bool)
+                #     mask[:] = True if alpha == 255 else False
+                #     bg_image = ImageData(array=numpy.ma.masked_array(arr, mask=mask))
+
+                req_layers = req["layers"].split(",")
+
+                req_styles = req["styles"].split(",")
+                if len(req_styles) > 1 and len(req_styles) != len(req_layers):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Number of styles {len(req_styles)} should be either 1 or equal to the number of layers {len(req_layers)}.",
+                    )
+
+                images: list[ImageData] = []
+                for idx, name in enumerate(req_layers):
+                    style = (
+                        req_styles[0] if len(req_styles) == 1 else req_styles[idx]
+                    ) or "default"
+
+                    if name not in layers:
+                        # TODO: code should be LayerNotDefined
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Invalid 'LAYER' parameter: {name}. Should be one of {list(layers)}.",
+                        )
+
+                    layer = layers[name]
+
+                    # TODO: code should be StyleNotDefined
+                    if style != layer["style"]:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Invalid STYLE '{req_styles[0]}' for layer {layer['id']}",
+                        )
+
+                    images.append(
+                        self.get_map_data(
+                            req,
+                            layer,
+                            api_params=backend_params.api_params,
+                        )
+                    )
+
+                image = overlay_layers(images)
 
                 if transparent := req.get("transparent", False):
                     if str(transparent).lower() == "true":
@@ -1576,14 +1630,6 @@ class OGCEndpointsFactory(BaseFactory):
                             detail=f"Invalid 'TRANSPARENT' parameter: {transparent}. Should be one of ['FALSE', 'TRUE'].",
                         )
 
-                format = req["format"]
-                if format not in self.supported_format:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Invalid 'FORMAT' parameter: {format}. Should be one of {self.supported_format}.",
-                    )
-                output_format = ImageType(MediaType(format).name)
-
                 colormap = get_dependency_params(
                     dependency=self.colormap_dependency,
                     query_params={"colormap": req["colormap"]}
@@ -1595,7 +1641,7 @@ class OGCEndpointsFactory(BaseFactory):
                     image,
                     output_format=output_format,
                     colormap=colormap,
-                    add_mask=True,
+                    add_mask=transparent,
                 )
 
                 headers: Dict[str, str] = {}
@@ -1650,11 +1696,8 @@ class OGCEndpointsFactory(BaseFactory):
 
                 image = self.get_map_data(
                     req,
-                    req_keys,
-                    request_type,
                     layer,
                     api_params=backend_params.api_params,
-                    version=version,
                 )
                 i = int(req["i"])
                 j = int(req["j"])

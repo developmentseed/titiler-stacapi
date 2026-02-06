@@ -113,172 +113,213 @@ def test_wms_getcapabilities(client, app):
     assert len(times) == 6
 
 
-# @patch("rio_tiler.io.rasterio.rasterio")
-# @patch("titiler.stacapi.backend.ItemSearch")
-# @patch("titiler.stacapi.factory.Client")
-# def test_wmts_gettile(client, item_search, rio, app):
-#     """test STAC items endpoints."""
-#     rio.open = mock_rasterio_open
+@patch("rio_tiler.io.rasterio.rasterio")
+@patch("titiler.stacapi.backend.ItemSearch")
+@patch("titiler.stacapi.factory.Client")
+def test_wms_getmap(client, item_search, rio, app):
+    """test WMS Get Map endpoints."""
+    rio.open = mock_rasterio_open
 
-#     with open(catalog_json, "r") as f:
-#         collections = [
-#             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
-#         ]
-#         client.open.return_value.get_collections.return_value = collections
+    with open(catalog_json, "r") as f:
+        collections = [
+            pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
+        ]
+        client.open.return_value.get_collections.return_value = collections
 
-#     with open(item_json, "r") as f:
-#         item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
+    with open(item_json, "r") as f:
+        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
 
-#     # missing keys
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#         },
-#     )
-#     assert response.status_code == 400
+    # missing parameters
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "gettile",
+        },
+    )
+    assert response.status_code == 400
 
-#     # invalid format
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "default",
-#             "format": "image/yo",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 0,
-#             "tilerow": 0,
-#             "tilecol": 0,
-#         },
-#     )
-#     assert response.status_code == 400
+    # invalid format
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "getmap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857",
+            "width": 256,
+            "height": 256,
+            "styles": "default",
+            "format": "image/yo",
+        },
+    )
+    assert response.status_code == 400
 
-#     # invalid layer
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr",
-#             "style": "",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 0,
-#             "tilerow": 0,
-#             "tilecol": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert (
-#         "Invalid 'LAYER' parameter: MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr"
-#         in response.json()["detail"]
-#     )
+    # invalid layer
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "getmap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857",
+            "width": 256,
+            "height": 256,
+            "styles": "default",
+            "format": "image/png",
+        },
+    )
+    assert response.status_code == 400
+    assert (
+        "Invalid 'LAYER' parameter: MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr"
+        in response.json()["detail"]
+    )
 
-#     # invalid style
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "something",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 0,
-#             "tilerow": 0,
-#             "tilecol": 0,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Invalid STYLE parameters something" in response.json()["detail"]
+    # invalid style
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetMap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857",
+            "width": 256,
+            "height": 256,
+            "styles": "something",
+            "format": "image/png",
+        },
+    )
+    assert response.status_code == 400
+    assert (
+        "Invalid STYLE 'something' for layer MAXAR_BayofBengal_Cyclone_Mocha_May_23_color"
+        in response.json()["detail"]
+    )
 
-#     # Missing Time
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 15,
-#             "tilerow": 12849,
-#             "tilecol": 8589,
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Missing 'TIME' parameter" in response.json()["detail"]
+    # invalid bbox
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetMap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "bbox": "-4323278.319809569,9532003.17527462",
+            "CRS": "EPSG:3857",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+        },
+    )
+    assert response.status_code == 400
+    assert "Invalid 'BBOX' parameters" in response.json()["detail"]
 
-#     # Invalid Time
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 15,
-#             "tilerow": 12849,
-#             "tilecol": 8589,
-#             "TIME": "2000-01-01",
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Invalid 'TIME' parameter:" in response.json()["detail"]
+    # invalid crs
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetMap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857dasdas",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+        },
+    )
+    assert response.status_code == 400
+    assert "Invalid 'CRS' parameter" in response.json()["detail"]
 
-#     # Invalid TMS
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQua",
-#             "tilematrix": 15,
-#             "tilerow": 12849,
-#             "tilecol": 8589,
-#             "TIME": "2023-01-05",
-#         },
-#     )
-#     assert response.status_code == 400
-#     assert "Invalid 'TILEMATRIXSET' parameter" in response.json()["detail"]
+    # invalid crs
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetMap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:2154 ",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+        },
+    )
+    assert response.status_code == 400
+    assert "Unsupported 'CRS' parameter" in response.json()["detail"]
 
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "service": "WMTS",
-#             "version": "1.0.0",
-#             "request": "gettile",
-#             "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
-#             "style": "default",
-#             "format": "image/png",
-#             "tilematrixset": "WebMercatorQuad",
-#             "tilematrix": 14,
-#             "tilerow": 7188,
-#             "tilecol": 12375,
-#             "TIME": "2023-01-05",
-#         },
-#     )
-#     assert response.status_code == 200
-#     assert (
-#         item_search.call_args.kwargs.get("datetime")
-#         == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
-#     )
+    # Missing Time
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetMap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857 ",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+        },
+    )
+    assert response.status_code == 400
+    assert "Missing 'TIME' parameter" in response.json()["detail"]
+
+    # Invalid Time
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetMap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857 ",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+            "TIME": "2000-01-01",
+        },
+    )
+    assert response.status_code == 400
+    assert "Invalid 'TIME' parameter:" in response.json()["detail"]
+
+    # response = app.get(
+    #     "/wms",
+    #     params={
+    #         "service": "WMS",
+    #         "version": "1.3.0",
+    #         "request": "GetMap",
+    #         "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+    #         "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+    #         "CRS": "EPSG:3857 ",
+    #         "width": 256,
+    #         "height": 256,
+    #         "styles": "",
+    #         "format": "image/png",
+    #         "TIME": "2023-01-05",
+    #     },
+    # )
+    # assert response.status_code == 200
+    # assert (
+    #     item_search.call_args.kwargs.get("datetime")
+    #     == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
+    # )
+
 
 #     response = app.get(
 #         "/wmts",
