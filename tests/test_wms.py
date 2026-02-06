@@ -8,6 +8,8 @@ import pystac
 import rasterio
 from owslib.wms import WebMapService
 
+from .conftest import parse_img
+
 item_json = os.path.join(
     os.path.dirname(__file__), "fixtures", "46_033111301201_1040010082988200.json"
 )
@@ -147,7 +149,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "getmap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
             "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
             "CRS": "EPSG:3857",
             "width": 256,
@@ -165,7 +167,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "getmap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visualrrrrrrrr",
             "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
             "CRS": "EPSG:3857",
             "width": 256,
@@ -176,7 +178,7 @@ def test_wms_getmap(client, item_search, rio, app):
     )
     assert response.status_code == 400
     assert (
-        "Invalid 'LAYER' parameter: MAXAR_BayofBengal_Cyclone_Mocha_May_23_colorrrrrrrrr"
+        "Invalid 'LAYER' parameter: MAXAR_BayofBengal_Cyclone_Mocha_May_23_visualrrrrrrrr"
         in response.json()["detail"]
     )
 
@@ -187,7 +189,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "GetMap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
             "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
             "CRS": "EPSG:3857",
             "width": 256,
@@ -198,7 +200,7 @@ def test_wms_getmap(client, item_search, rio, app):
     )
     assert response.status_code == 400
     assert (
-        "Invalid STYLE 'something' for layer MAXAR_BayofBengal_Cyclone_Mocha_May_23_color"
+        "Invalid STYLE 'something' for layer MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"
         in response.json()["detail"]
     )
 
@@ -209,7 +211,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "GetMap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
             "bbox": "-4323278.319809569,9532003.17527462",
             "CRS": "EPSG:3857",
             "width": 256,
@@ -228,7 +230,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "GetMap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
             "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
             "CRS": "EPSG:3857dasdas",
             "width": 256,
@@ -247,7 +249,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "GetMap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
             "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
             "CRS": "EPSG:2154 ",
             "width": 256,
@@ -266,7 +268,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "GetMap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
             "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
             "CRS": "EPSG:3857 ",
             "width": 256,
@@ -285,7 +287,7 @@ def test_wms_getmap(client, item_search, rio, app):
             "service": "WMS",
             "version": "1.3.0",
             "request": "GetMap",
-            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
             "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
             "CRS": "EPSG:3857 ",
             "width": 256,
@@ -298,50 +300,36 @@ def test_wms_getmap(client, item_search, rio, app):
     assert response.status_code == 400
     assert "Invalid 'TIME' parameter:" in response.json()["detail"]
 
-    # response = app.get(
-    #     "/wms",
-    #     params={
-    #         "service": "WMS",
-    #         "version": "1.3.0",
-    #         "request": "GetMap",
-    #         "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
-    #         "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
-    #         "CRS": "EPSG:3857 ",
-    #         "width": 256,
-    #         "height": 256,
-    #         "styles": "",
-    #         "format": "image/png",
-    #         "TIME": "2023-01-05",
-    #     },
-    # )
-    # assert response.status_code == 200
-    # assert (
-    #     item_search.call_args.kwargs.get("datetime")
-    #     == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
-    # )
-
-
-#     response = app.get(
-#         "/wmts",
-#         params={
-#             "SERVICE": "WMTS",
-#             "VERSION": "1.0.0",
-#             "REQUEST": "getTile",
-#             "LAYER": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
-#             "STYLE": "default",
-#             "FORMAT": "image/png",
-#             "TILEMATRIXSET": "WebMercatorQuad",
-#             "TILEMATRIX": 14,
-#             "TILEROW": 7188,
-#             "TILECOL": 12375,
-#             "TIME": "2023-01-05",
-#         },
-#     )
-#     assert response.status_code == 200
-#     assert (
-#         item_search.call_args.kwargs.get("datetime")
-#         == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
-#     )
+    response = app.get(
+        "/wms",
+        params={
+            "service": "WMS",
+            "version": "1.3.0",
+            "request": "GetMap",
+            "layers": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+            "bbox": "-4323278.319809569,9532003.17527462,-4322055.327357005,9533226.167727182",
+            "CRS": "EPSG:3857 ",
+            "width": 256,
+            "height": 256,
+            "styles": "",
+            "format": "image/png",
+            "TIME": "2023-01-05",
+        },
+    )
+    assert response.status_code == 200
+    assert (
+        item_search.call_args.kwargs.get("datetime")
+        == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
+    )
+    assert response.headers["content-type"] == "image/png"
+    assert "content-bbox" in response.headers
+    assert "content-crs" in response.headers
+    profile = parse_img(response.content)
+    assert profile["driver"] == "PNG"
+    assert profile["dtype"] == "uint8"
+    assert profile["count"] == 3
+    assert profile["width"] == 256
+    assert profile["height"] == 256
 
 
 # @patch("rio_tiler.io.rasterio.rasterio")
@@ -349,7 +337,6 @@ def test_wms_getmap(client, item_search, rio, app):
 # @patch("titiler.stacapi.factory.Client")
 # def test_wmts_gettile_param_override(client, item_search, rio, app):
 #     """test STAC items endpoints."""
-#     rio.open = mock_rasterio_open
 
 #     with open(catalog_json, "r") as f:
 #         collections = [

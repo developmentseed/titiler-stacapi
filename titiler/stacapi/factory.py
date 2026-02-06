@@ -622,6 +622,7 @@ class OGCEndpointsFactory(BaseFactory):
         ) as src_dst:
             image, _ = src_dst.part(
                 bbox,
+                dst_crs=crs,
                 bounds_crs=crs,
                 # STAC Query Params
                 search_options=asset_accessor.as_dict(),
@@ -1585,6 +1586,19 @@ class OGCEndpointsFactory(BaseFactory):
                         detail=f"Number of styles {len(req_styles)} should be either 1 or equal to the number of layers {len(req_layers)}.",
                     )
 
+                if transparent := req.get("transparent", False):
+                    if str(transparent).lower() == "true":
+                        transparent = True
+
+                    elif str(transparent).lower() == "false":
+                        transparent = False
+
+                    else:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Invalid 'TRANSPARENT' parameter: {transparent}. Should be one of ['FALSE', 'TRUE'].",
+                        )
+
                 images: list[ImageData] = []
                 for idx, name in enumerate(req_layers):
                     style = (
@@ -1607,40 +1621,28 @@ class OGCEndpointsFactory(BaseFactory):
                             detail=f"Invalid STYLE '{req_styles[0]}' for layer {layer['id']}",
                         )
 
-                    images.append(
-                        self.get_map_data(
-                            req,
-                            layer,
-                            api_params=backend_params.api_params,
-                        )
+                    img = self.get_map_data(
+                        req,
+                        layer,
+                        api_params=backend_params.api_params,
                     )
+
+                    colormap = get_dependency_params(
+                        dependency=self.colormap_dependency,
+                        query_params={"colormap": req["colormap"]}
+                        if "colormap" in req
+                        else layer.get("render") or {},
+                    )
+                    if colormap:
+                        img = img.apply_colormap(colormap)
+
+                    images.append(img)
 
                 image = overlay_layers(images)
 
-                if transparent := req.get("transparent", False):
-                    if str(transparent).lower() == "true":
-                        transparent = True
-
-                    elif str(transparent).lower() == "false":
-                        transparent = False
-
-                    else:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"Invalid 'TRANSPARENT' parameter: {transparent}. Should be one of ['FALSE', 'TRUE'].",
-                        )
-
-                colormap = get_dependency_params(
-                    dependency=self.colormap_dependency,
-                    query_params={"colormap": req["colormap"]}
-                    if "colormap" in req
-                    else layer.get("render") or {},
-                )
-
-                content, media_type = render_image(
+                content, _ = render_image(
                     image,
                     output_format=output_format,
-                    colormap=colormap,
                     add_mask=transparent,
                 )
 
@@ -1661,7 +1663,9 @@ class OGCEndpointsFactory(BaseFactory):
                         ]
                     )
 
-                return Response(content, media_type=media_type)
+                return Response(
+                    content, media_type=output_format.mediatype, headers=headers
+                )
 
             elif request_type.lower() == "getfeatureinfo":
                 # Required parameters:
