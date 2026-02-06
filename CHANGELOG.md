@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-06
+
 * update titiler requirements to `>=1.0,<1.1`
 * add support for python 3.14
 * update type hints for python >=3.11
@@ -15,6 +17,7 @@
 * add more links to the landing page
 * add WMTS extensions to the Items and Collections endpoints
 * remove custom `MosaicTilerFactory` and default to the one from `titiler.mosaic`
+* remove unused `STACSettings`. Alternate HREF key env needs to be defined using `RIO_TILER_STAC_ALTERNATE_KEY`
 
 ## [0.4.0] - 2025-11-06
 
@@ -54,7 +57,8 @@
 
 * initial release
 
-[Unreleased]: <https://github.com/developmentseed/titiler-stacapi/compare/0.4.0..main>
+[Unreleased]: <https://github.com/developmentseed/titiler-stacapi/compare/1.0.0..main>
+[1.0.0]: <https://github.com/developmentseed/titiler-stacapi/compare/0.4.0..1.0.0>
 [0.4.0]: <https://github.com/developmentseed/titiler-stacapi/compare/0.3.3..0.4.0>
 [0.3.3]: <https://github.com/developmentseed/titiler-stacapi/compare/0.3.2..0.3.3>
 [0.3.2]: <https://github.com/developmentseed/titiler-stacapi/compare/0.3.1..0.3.2>

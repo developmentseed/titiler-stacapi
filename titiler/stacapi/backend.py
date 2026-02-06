@@ -22,11 +22,10 @@ from urllib3 import Retry
 
 from titiler.stacapi.dependencies import APIParams, Search
 from titiler.stacapi.reader import SimpleSTACReader
-from titiler.stacapi.settings import CacheSettings, RetrySettings, STACSettings
+from titiler.stacapi.settings import CacheSettings, RetrySettings
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
-stac_config = STACSettings()
 
 ttl_cache = TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl)  # type: ignore
 
