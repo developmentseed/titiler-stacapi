@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-09
+
+* add: OGC Web Map Server Implementation Specification `/wms` endpoint
+
 ## [1.0.0] - 2026-02-06
 
 * update titiler requirements to `>=1.0,<1.1`
