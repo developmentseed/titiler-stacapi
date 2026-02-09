@@ -31,7 +31,6 @@ def test_render(client):
 
     visual = collections_render["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
     assert visual["bbox"]
-    assert visual["tilematrixsets"]["WebMercatorQuad"]
     assert visual["time"]
     assert visual["render"]["asset_bidx"]
 

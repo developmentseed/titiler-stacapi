@@ -79,7 +79,7 @@ It runs `titiler.stacapi` using Uvicorn web server.
 ### WMTS and the Render extension
 
 `titiler-stacapi` makes extensive use of the [**Render**](https://github.com/stac-extensions/render) extension, specifically at the `Collection` level.
-By using the render's metadata, the `/wmts` endpoint (from the `OGCWMTSFactory` factory) can populate a set of `layers` returned by the `GetCapabilities` service.
+By using the render's metadata, the `/wmts` endpoint (from the `OGCEndpointsFactory` factory) can populate a set of `layers` returned by the `GetCapabilities` service.
 
 
 ## Contribution & Development
