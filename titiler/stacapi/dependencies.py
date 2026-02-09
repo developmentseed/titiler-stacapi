@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Literal, Optional, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 import pystac
 from cachetools import TTLCache, cached
@@ -23,11 +23,11 @@ cache_config = CacheSettings()
 retry_config = RetrySettings()
 
 
-class APIParams(TypedDict, total=False):
+class APIParams(TypedDict):
     """STAC API Parameters."""
 
     url: str
-    headers: dict | None
+    headers: NotRequired[dict]
 
 
 class Search(TypedDict, total=False):
@@ -83,7 +83,15 @@ def ItemIdParams(
     item_id: Annotated[str, Path(description="STAC Item Identifier")],
 ) -> pystac.Item:
     """STAC Item dependency for the MultiBaseTilerFactory."""
-    return get_stac_item(request.app.state.stac_url, collection_id, item_id)
+    # NOTE: here we can customize the forwarded headers to the STAC API,
+    # for example to add authentication headers if needed.
+    headers: dict[str, Any] = {}
+    return get_stac_item(
+        request.app.state.stac_url,
+        collection_id,
+        item_id,
+        headers=headers,
+    )
 
 
 def CollectionSearch(
@@ -277,11 +285,11 @@ class STACAPIExtensionParams(DefaultDependency):
         ),
     ] = None
     limit: Annotated[
-        Optional[int],
+        int | None,
         Query(description="Limit the number of items per page search (default: 10)"),
     ] = 10
     max_items: Annotated[
-        Optional[int],
+        int | None,
         Query(description="Limit the number of total items (default: 100)"),
     ] = 100
 

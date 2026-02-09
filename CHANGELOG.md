@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-02-09
+
+* fix: `APIParams` type to make URL a required key
+
 ## [1.1.0] - 2026-02-09
 
 * add: OGC Web Map Server Implementation Specification `/wms` endpoint
