@@ -24,6 +24,7 @@ nav:
     - OGC TileMatrix Schemes: endpoints/tms_endpoints.md
   - Customization:
     - Authentication: custom/application_with_auth.md
+    - Multiple STAC APIs: custom/application_with_multiple_stac_apis.md
   - Technical Considerations: technical-considerations.md
   - Development - Contributing: contributing.md
   - Release notes: release-notes.md
