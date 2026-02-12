@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-02-12
+
+* fix: render's parameter handling and query-parameter override
+
 ## [1.1.1] - 2026-02-09
 
 * fix: `APIParams` type to make URL a required key

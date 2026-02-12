@@ -343,6 +343,47 @@ def test_wmts_gettile_param_override(client, item_search, rio, app):
             "SERVICE": "WMTS",
             "VERSION": "1.0.0",
             "REQUEST": "getTile",
+            "LAYER": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+            "STYLE": "default",
+            "FORMAT": "image/png",
+            "TILEMATRIXSET": "WebMercatorQuad",
+            "TILEMATRIX": 14,
+            "TILEROW": 7188,
+            "TILECOL": 12375,
+            "TIME": "2023-01-05",
+            "assets": "yo",
+        },
+    )
+    assert response.status_code == 404
+    assert "yo is not valid." in response.json()["detail"]
+
+    response = app.get(
+        "/wmts",
+        params=(
+            ("SERVICE", "WMTS"),
+            ("VERSION", "1.0.0"),
+            ("REQUEST", "getTile"),
+            ("LAYER", "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"),
+            ("STYLE", "default"),
+            ("FORMAT", "image/png"),
+            ("TILEMATRIXSET", "WebMercatorQuad"),
+            ("TILEMATRIX", 14),
+            ("TILEROW", 7188),
+            ("TILECOL", 12375),
+            ("TIME", "2023-01-05"),
+            ("assets", "visual"),
+            ("assets", "yo"),
+        ),
+    )
+    assert response.status_code == 404
+    assert "yo is not valid." in response.json()["detail"]
+
+    response = app.get(
+        "/wmts",
+        params={
+            "SERVICE": "WMTS",
+            "VERSION": "1.0.0",
+            "REQUEST": "getTile",
             "LAYER": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_color",
             "STYLE": "default",
             "FORMAT": "image/png",
@@ -356,6 +397,46 @@ def test_wmts_gettile_param_override(client, item_search, rio, app):
     )
     assert response.status_code == 400
     assert "Could not parse the colormap value" in response.json()["detail"]
+
+    response = app.get(
+        "/wmts",
+        params=(
+            ("SERVICE", "WMTS"),
+            ("VERSION", "1.0.0"),
+            ("REQUEST", "getTile"),
+            ("LAYER", "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visualr"),
+            ("STYLE", "default"),
+            ("FORMAT", "image/png"),
+            ("TILEMATRIXSET", "WebMercatorQuad"),
+            ("TILEMATRIX", 14),
+            ("TILEROW", 7188),
+            ("TILECOL", 12375),
+            ("TIME", "2023-01-05"),
+            ("rescale", "0,100"),
+        ),
+    )
+    assert response.status_code == 200
+
+    response = app.get(
+        "/wmts",
+        params=(
+            ("SERVICE", "WMTS"),
+            ("VERSION", "1.0.0"),
+            ("REQUEST", "getTile"),
+            ("LAYER", "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visualr"),
+            ("STYLE", "default"),
+            ("FORMAT", "image/png"),
+            ("TILEMATRIXSET", "WebMercatorQuad"),
+            ("TILEMATRIX", 14),
+            ("TILEROW", 7188),
+            ("TILECOL", 12375),
+            ("TIME", "2023-01-05"),
+            ("rescale", "0,1000"),
+            ("rescale", "0,500"),
+            ("rescale", "0,100"),
+        ),
+    )
+    assert response.status_code == 200
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
