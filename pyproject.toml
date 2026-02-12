@@ -122,7 +122,7 @@ namespace_packages = true
 explicit_package_bases = true
 
 [tool.bumpversion]
-current_version = "1.1.1"
+current_version = "1.1.2"
 search = "{current_version}"
 replace = "{new_version}"
 regex = false
