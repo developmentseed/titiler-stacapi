@@ -28,6 +28,7 @@ from rio_tiler.models import ImageData
 from rio_tiler.mosaic.methods.base import MosaicMethodBase
 from rio_tiler.types import ColorMapType
 from rio_tiler.utils import CRS_to_uri
+from starlette.datastructures import MultiDict, QueryParams
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
@@ -85,7 +86,9 @@ jinja2_env = jinja2.Environment(
 DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
 
 
-def get_dependency_params(*, dependency: Callable, query_params: Dict) -> Any:
+def get_dependency_params(
+    *, dependency: Callable, query_params: QueryParams | Dict
+) -> Any:
     """Check QueryParams for Query dependency.
 
     1. `get_dependant` is used to get the query-parameters required by the `callable`
@@ -360,7 +363,7 @@ class OGCEndpointsFactory(BaseFactory):
 
     def get_tile(  # noqa: C901
         self,
-        req: Dict,
+        req: QueryParams,
         layer: LayerDict,
         api_params: APIParams,
     ) -> ImageData:
@@ -412,45 +415,61 @@ class OGCEndpointsFactory(BaseFactory):
                 f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
             )
 
-        if "color_formula" in req:
-            query_params["color_formula"] = req["color_formula"]
+        # Convert Render to List
+        # {"assets": ["visual"]} -> [("assets", "visual")]
+        render_dict = MultiDict(
+            [
+                (k, v)
+                for k, val in query_params.items()
+                for v in (val if isinstance(val, (list, tuple)) else [val])
+            ]
+        )
 
-        if "expression" in req:
-            query_params["expression"] = req["expression"]
+        # Allow parameter overwrite from QueryParams
+        if "assets" in req:
+            _ = render_dict.pop("assets")
+            render_dict.update(
+                [(key, value) for (key, value) in req._list if key == "assets"]
+            )
 
+        if expr := req.get("expression"):
+            render_dict.update({"expression": expr})
+
+        if cf := req.get("color_formula"):
+            render_dict.update({"color_formula": cf})
+
+        if "rescale" in req:
+            _ = render_dict.pop("rescale")
+            render_dict.update(
+                [(key, value) for (key, value) in req._list if key == "rescale"]
+            )
+
+        qs = QueryParams(render_dict._list)
         search_query = get_dependency_params(
-            dependency=self.search_dependency,
-            query_params=query_params,
+            dependency=self.search_dependency, query_params=qs
         )
         search_query["collections"] = [layer["collection"]]
 
         asset_accessor = get_dependency_params(
-            dependency=self.assets_accessor_dependency,
-            query_params=query_params,
+            dependency=self.assets_accessor_dependency, query_params=qs
         )
         tile_params = get_dependency_params(
-            dependency=self.tile_dependency,
-            query_params=query_params,
+            dependency=self.tile_dependency, query_params=qs
         )
         layer_params = get_dependency_params(
-            dependency=self.layer_dependency,
-            query_params=query_params,
+            dependency=self.layer_dependency, query_params=qs
         )
         reader_params = get_dependency_params(
-            dependency=self.reader_dependency,
-            query_params=query_params,
+            dependency=self.reader_dependency, query_params=qs
         )
         dataset_params = get_dependency_params(
-            dependency=self.dataset_dependency,
-            query_params=query_params,
+            dependency=self.dataset_dependency, query_params=qs
         )
         pixel_selection = get_dependency_params(
-            dependency=self.pixel_selection_dependency,
-            query_params=query_params,
+            dependency=self.pixel_selection_dependency, query_params=qs
         )
         rendering = get_dependency_params(
-            dependency=self.render_dependency,
-            query_params=query_params,
+            dependency=self.render_dependency, query_params=qs
         )
 
         tms = self.supported_tms.get(tms_id)
@@ -481,8 +500,7 @@ class OGCEndpointsFactory(BaseFactory):
             )
 
             if post_process := get_dependency_params(
-                dependency=self.process_dependency,
-                query_params=query_params,
+                dependency=self.process_dependency, query_params=qs
             ):
                 image = post_process(image)
 
@@ -497,7 +515,7 @@ class OGCEndpointsFactory(BaseFactory):
     # GetMap: Return an image chip
     def get_map_data(  # noqa: C901
         self,
-        req: dict,
+        req: QueryParams,
         layer: LayerDict,
         api_params: APIParams,
     ) -> ImageData:
@@ -581,37 +599,55 @@ class OGCEndpointsFactory(BaseFactory):
                 f"{start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')}"
             )
 
-        if "color_formula" in req:
-            query_params["color_formula"] = req["color_formula"]
+        # Convert Render to List
+        # {"assets": ["visual"]} -> [("assets", "visual")]
+        render_dict = MultiDict(
+            [
+                (k, v)
+                for k, val in query_params.items()
+                for v in (val if isinstance(val, (list, tuple)) else [val])
+            ]
+        )
 
-        if "expression" in req:
-            query_params["expression"] = req["expression"]
+        # Allow parameter overwrite from QueryParams
+        if "assets" in req:
+            _ = render_dict.pop("assets")
+            render_dict.update(
+                [(key, value) for (key, value) in req._list if key == "assets"]
+            )
 
+        if expr := req.get("expression"):
+            render_dict.update({"expression": expr})
+
+        if cf := req.get("color_formula"):
+            render_dict.update({"color_formula": cf})
+
+        if "rescale" in req:
+            _ = render_dict.pop("rescale")
+            render_dict.update(
+                [(key, value) for (key, value) in req._list if key == "rescale"]
+            )
+
+        qs = QueryParams(render_dict._list)
         search_query = get_dependency_params(
-            dependency=self.search_dependency,
-            query_params=query_params,
+            dependency=self.search_dependency, query_params=qs
         )
         search_query["collections"] = [layer["collection"]]
 
         asset_accessor = get_dependency_params(
-            dependency=self.assets_accessor_dependency,
-            query_params=query_params,
+            dependency=self.assets_accessor_dependency, query_params=qs
         )
         layer_params = get_dependency_params(
-            dependency=self.layer_dependency,
-            query_params=query_params,
+            dependency=self.layer_dependency, query_params=qs
         )
         reader_params = get_dependency_params(
-            dependency=self.reader_dependency,
-            query_params=query_params,
+            dependency=self.reader_dependency, query_params=qs
         )
         dataset_params = get_dependency_params(
-            dependency=self.dataset_dependency,
-            query_params=query_params,
+            dependency=self.dataset_dependency, query_params=qs
         )
         rendering = get_dependency_params(
-            dependency=self.render_dependency,
-            query_params=query_params,
+            dependency=self.render_dependency, query_params=qs
         )
 
         with self.backend(
@@ -634,8 +670,7 @@ class OGCEndpointsFactory(BaseFactory):
             )
 
         if post_process := get_dependency_params(
-            dependency=self.process_dependency,
-            query_params=query_params,
+            dependency=self.process_dependency, query_params=qs
         ):
             image = post_process(image)
 
@@ -842,10 +877,13 @@ class OGCEndpointsFactory(BaseFactory):
             backend_params=Depends(self.backend_dependency),
         ):
             """OGC WMTS Service (KVP encoding)"""
-            req = {k.lower(): v for k, v in request.query_params.items()}
+            # normalize keys to lowercase
+            qs = QueryParams(
+                [(k.lower(), v) for k, v in request.query_params.multi_items()]
+            )
 
             # Service is mandatory
-            service = req.get("service")
+            service = qs.get("service")
             if service is None:
                 raise HTTPException(
                     status_code=400, detail="Missing WMTS 'SERVICE' parameter."
@@ -858,7 +896,7 @@ class OGCEndpointsFactory(BaseFactory):
                 )
 
             # Version is mandatory in the specification but we default to 1.0.0
-            version = req.get("version", "1.0.0")
+            version = qs.get("version", "1.0.0")
             if version is None:
                 raise HTTPException(
                     status_code=400, detail="Missing WMTS 'VERSION' parameter."
@@ -871,7 +909,7 @@ class OGCEndpointsFactory(BaseFactory):
                 )
 
             # Request is mandatory
-            request_type = req.get("request")
+            request_type = qs.get("request")
             if not request_type:
                 raise HTTPException(
                     status_code=400, detail="Missing WMTS 'REQUEST' parameter."
@@ -918,7 +956,7 @@ class OGCEndpointsFactory(BaseFactory):
                     "tilecol",
                 }
 
-                intrs = set(req.keys()).intersection(req_keys)
+                intrs = set(qs.keys()).intersection(req_keys)
                 missing_keys = req_keys.difference(intrs)
                 if len(missing_keys) > 0:
                     raise HTTPException(
@@ -926,24 +964,24 @@ class OGCEndpointsFactory(BaseFactory):
                         detail=f"Missing '{request_type}' parameters: {missing_keys}",
                     )
 
-                if req["format"] not in self.supported_format:
+                if qs["format"] not in self.supported_format:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'FORMAT' parameter: {req['format']}. Should be one of {self.supported_format}.",
+                        detail=f"Invalid 'FORMAT' parameter: {qs['format']}. Should be one of {self.supported_format}.",
                     )
 
-                output_format = ImageType(MediaType(req["format"]).name)
+                output_format = ImageType(MediaType(qs["format"]).name)
 
-                if req["layer"] not in layers:
+                if qs["layer"] not in layers:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'LAYER' parameter: {req['layer']}. Should be one of {list(layers)}.",
+                        detail=f"Invalid 'LAYER' parameter: {qs['layer']}. Should be one of {list(layers)}.",
                     )
 
-                layer = layers[req["layer"]]
+                layer = layers[qs["layer"]]
 
                 style = layer.get("style", "default").lower()
-                req_style = req.get("style") or "default"
+                req_style = qs.get("style") or "default"
                 if req_style != style:
                     raise HTTPException(
                         status_code=400,
@@ -951,15 +989,15 @@ class OGCEndpointsFactory(BaseFactory):
                     )
 
                 image = self.get_tile(
-                    req,
+                    qs,
                     layer,
                     api_params=backend_params.api_params,
                 )
 
                 colormap = get_dependency_params(
                     dependency=self.colormap_dependency,
-                    query_params={"colormap": req["colormap"]}
-                    if "colormap" in req
+                    query_params={"colormap": qs["colormap"]}
+                    if "colormap" in qs
                     else layer.get("render") or {},
                 )
 
@@ -1007,7 +1045,7 @@ class OGCEndpointsFactory(BaseFactory):
                     "j",
                     "infoformat",
                 }
-                intrs = set(req.keys()).intersection(req_keys)
+                intrs = set(qs.keys()).intersection(req_keys)
                 missing_keys = req_keys.difference(intrs)
                 if len(missing_keys) > 0:
                     raise HTTPException(
@@ -1015,22 +1053,22 @@ class OGCEndpointsFactory(BaseFactory):
                         detail=f"Missing '{request_type}' parameters: {missing_keys}",
                     )
 
-                if req["infoformat"] != "application/geo+json":
+                if qs["infoformat"] != "application/geo+json":
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'InfoFormat' parameter: {req['infoformat']}. Should be 'application/geo+json'.",
+                        detail=f"Invalid 'InfoFormat' parameter: {qs['infoformat']}. Should be 'application/geo+json'.",
                     )
 
-                if req["layer"] not in layers:
+                if qs["layer"] not in layers:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'LAYER' parameter: {req['layer']}. Should be one of {list(layers)}.",
+                        detail=f"Invalid 'LAYER' parameter: {qs['layer']}. Should be one of {list(layers)}.",
                     )
 
-                layer = layers[req["layer"]]
+                layer = layers[qs["layer"]]
 
                 style = layer.get("style", "default").lower()
-                req_style = req.get("style") or "default"
+                req_style = qs.get("style") or "default"
                 if req_style != style:
                     raise HTTPException(
                         status_code=400,
@@ -1038,20 +1076,22 @@ class OGCEndpointsFactory(BaseFactory):
                     )
 
                 image = self.get_tile(
-                    req,
+                    qs,
                     layer,
                     api_params=backend_params.api_params,
                 )
 
                 colormap = get_dependency_params(
                     dependency=self.colormap_dependency,
-                    query_params=layer.get("render") or {},
+                    query_params={"colormap": qs["colormap"]}
+                    if "colormap" in qs
+                    else layer.get("render") or {},
                 )
                 if colormap:
                     image = image.apply_colormap(colormap)
 
-                i = int(req["i"])
-                j = int(req["j"])
+                i = int(qs["i"])
+                j = int(qs["j"])
 
                 ys, xs = rowcol_to_coords(image.transform, [j], [i])
                 xs_wgs84, ys_wgs84 = transform_points(image.crs, "epsg:4326", xs, ys)
@@ -1068,11 +1108,11 @@ class OGCEndpointsFactory(BaseFactory):
                         "I": i,
                         "J": j,
                         "style": req_style,
-                        "dimension": {"time": req.get("time")},
-                        "tileMatrixSet": req["tilematrixset"],
-                        "tileMatrix": req["tilematrix"],
-                        "tileRow": req["tilerow"],
-                        "tileCol": req["tilecol"],
+                        "dimension": {"time": qs.get("time")},
+                        "tileMatrixSet": qs["tilematrixset"],
+                        "tileMatrix": qs["tilematrix"],
+                        "tileRow": qs["tilerow"],
+                        "tileCol": qs["tilecol"],
                     },
                 }
                 return GeoJSONResponse(geojson)
@@ -1443,7 +1483,10 @@ class OGCEndpointsFactory(BaseFactory):
                 - GetFeatureInfo returns pixel values
 
             """
-            req = {k.lower(): v for k, v in request.query_params.items()}
+            # normalize keys to lowercase
+            qs = QueryParams(
+                [(k.lower(), v) for k, v in request.query_params.multi_items()]
+            )
 
             # Required parameters:
             # - SERVICE=WMS
@@ -1451,20 +1494,20 @@ class OGCEndpointsFactory(BaseFactory):
             # Optional parameters: VERSION
 
             # Service is mandatory
-            service = req.get("service")
+            service = qs.get("service")
             if service is None:
                 raise HTTPException(
                     status_code=400, detail="Missing WMS 'SERVICE' parameter."
                 )
 
-            if not req["service"].lower() == "wms":
+            if not qs["service"].lower() == "wms":
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid 'SERVICE' parameter: {req['service']}. Only 'wms' is accepted",
+                    detail=f"Invalid 'SERVICE' parameter: {qs['service']}. Only 'wms' is accepted",
                 )
 
             # Version is mandatory in the specification but we default to 1.3.0
-            version = req.get("version", "1.3.0")
+            version = qs.get("version", "1.3.0")
             if version not in self.supported_wms_version:
                 raise HTTPException(
                     status_code=400,
@@ -1472,7 +1515,7 @@ class OGCEndpointsFactory(BaseFactory):
                 )
 
             # Request is mandatory
-            request_type = req.get("request")
+            request_type = qs.get("request")
             if not request_type:
                 raise HTTPException(
                     status_code=400, detail="Missing WMS 'REQUEST' parameter."
@@ -1505,13 +1548,13 @@ class OGCEndpointsFactory(BaseFactory):
                     "format",
                     "updatesequence",
                 ]
-                qs = [
+                cleared_qs = [
                     (key, value)
                     for (key, value) in request.query_params._list
                     if key.lower() not in qs_key_to_remove
                 ]
-                if qs:
-                    wms_url += f"?{urlencode(qs)}"
+                if cleared_qs:
+                    wms_url += f"?{urlencode(cleared_qs)}"
 
                 # Grab information from each layer provided
                 layers_dict: Dict[str, Any] = {}
@@ -1571,7 +1614,7 @@ class OGCEndpointsFactory(BaseFactory):
                 else:
                     req_keys.update({"format"})
 
-                intrs = set(req.keys()).intersection(req_keys)
+                intrs = set(qs.keys()).intersection(req_keys)
                 missing_keys = req_keys.difference(intrs)
                 if len(missing_keys) > 0:
                     raise HTTPException(
@@ -1593,23 +1636,23 @@ class OGCEndpointsFactory(BaseFactory):
                 #     mask[:] = True if alpha == 255 else False
                 #     bg_image = ImageData(array=numpy.ma.masked_array(arr, mask=mask))
 
-                req_layers = req["layers"].split(",")
+                req_layers = qs["layers"].split(",")
                 if request_type.lower() == "getfeatureinfo":
-                    query_layers = req["query_layers"].split(",")
+                    query_layers = qs["query_layers"].split(",")
                     if set(query_layers).difference(set(req_layers)):
                         raise HTTPException(
                             status_code=400,
-                            detail=f"Invalid 'QUERY_LAYERS' parameter: {req['query_layers']}. Should be a subset of LAYERS {req['layers']}.",
+                            detail=f"Invalid 'QUERY_LAYERS' parameter: {qs['query_layers']}. Should be a subset of LAYERS {qs['layers']}.",
                         )
 
-                req_styles = req["styles"].split(",")
+                req_styles = qs["styles"].split(",")
                 if len(req_styles) > 1 and len(req_styles) != len(req_layers):
                     raise HTTPException(
                         status_code=400,
                         detail=f"Number of styles {len(req_styles)} should be either 1 or equal to the number of layers {len(req_layers)}.",
                     )
 
-                if transparent := req.get("transparent", False):
+                if transparent := qs.get("transparent", False):
                     if str(transparent).lower() == "true":
                         transparent = True
 
@@ -1648,7 +1691,7 @@ class OGCEndpointsFactory(BaseFactory):
                         (
                             layer["id"],
                             self.get_map_data(
-                                req,
+                                qs,
                                 layer,
                                 api_params=backend_params.api_params,
                             ),
@@ -1657,14 +1700,14 @@ class OGCEndpointsFactory(BaseFactory):
 
                 # GetFeatureInfo Response
                 if request_type.lower() == "getfeatureinfo":
-                    if req["info_format"] not in ["application/geo+json"]:
+                    if qs["info_format"] not in ["application/geo+json"]:
                         raise HTTPException(
                             status_code=400,
-                            detail=f"Invalid 'INFO_FORMAT' parameter: {req['info_format']}. Should be one of {['application/geo+json']}.",
+                            detail=f"Invalid 'INFO_FORMAT' parameter: {qs['info_format']}. Should be one of {['application/geo+json']}.",
                         )
 
-                    i = int(req["i"])
-                    j = int(req["j"])
+                    i = int(qs["i"])
+                    j = int(qs["j"])
                     geojson: dict[str, Any] = {
                         "type": "FeatureCollection",
                         "features": [],
@@ -1692,7 +1735,7 @@ class OGCEndpointsFactory(BaseFactory):
                                     **bands,
                                     "I": i,
                                     "J": j,
-                                    "dimension": {"time": req.get("time")},
+                                    "dimension": {"time": qs.get("time")},
                                 },
                             }
                         )
@@ -1700,13 +1743,13 @@ class OGCEndpointsFactory(BaseFactory):
                     return GeoJSONResponse(geojson)
 
                 # TODO: code should be InvalidFormat
-                if req["format"] not in self.supported_format:
+                if qs["format"] not in self.supported_format:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'FORMAT' parameter: {req['format']}. Should be one of {self.supported_format}.",
+                        detail=f"Invalid 'FORMAT' parameter: {qs['format']}. Should be one of {self.supported_format}.",
                     )
 
-                output_format = ImageType(MediaType(req["format"]).name)
+                output_format = ImageType(MediaType(qs["format"]).name)
 
                 # Merge all layers into one image (if more than 1) and apply colormap if needed
                 image = overlay_layers([im for _, im in images])
