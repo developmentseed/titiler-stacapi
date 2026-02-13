@@ -5,6 +5,7 @@ from threading import Lock
 from typing import Any
 
 import attr
+import pystac
 from cachetools import TTLCache, cached
 from cachetools.keys import hashkey
 from geojson_pydantic import Point, Polygon
@@ -164,13 +165,39 @@ class STACAPIBackend(BaseBackend):
 
     @cached(  # type: ignore
         ttl_cache,
-        key=lambda self: hashkey(
+        key=lambda self, collection_id: hashkey(
+            collection_id,
             self.api_params["url"],
             json.dumps(self.input),
             json.dumps(self.api_params.get("headers", {})),
         ),
         lock=Lock(),
     )
+    def _get_collection(self, collection_id) -> pystac.Collection:
+        stac_api_io = StacApiIO(
+            max_retries=Retry(
+                total=retry_config.retry,
+                backoff_factor=retry_config.retry_factor,
+            ),
+            headers=self.api_params.get("headers", {}),
+        )
+        client = Client.open(f"{self.api_params['url']}", stac_io=stac_api_io)
+        return client.get_collection(collection_id)
+
+    def get_geographic_bounds(self, crs: CRS) -> BBox:
+        """Override method to fetch bounds from collection metadata."""
+        if not self.input.get("bbox") and (
+            collections := self.input.get("collections", [])
+        ):
+            if len(collections) == 1:
+                collection = self._get_collection(collections[0])
+                if collection.extent.spatial:
+                    if collection.extent.spatial.bboxes[0]:
+                        self.bounds = list(collection.extent.spatial.bboxes[0])
+                        self.crs = WGS84_CRS
+
+        return super().get_geographic_bounds(crs)
+
     def info(self) -> MosaicInfo:  # type: ignore
         """Mosaic info."""
         renders = {}
@@ -179,16 +206,8 @@ class STACAPIBackend(BaseBackend):
 
         if collections := self.input.get("collections", []):
             if len(collections) == 1:
-                stac_api_io = StacApiIO(
-                    max_retries=Retry(
-                        total=retry_config.retry,
-                        backoff_factor=retry_config.retry_factor,
-                    ),
-                    headers=self.api_params.get("headers", {}),
-                )
-                client = Client.open(f"{self.api_params['url']}", stac_io=stac_api_io)
-                collection = client.get_collection(collections[0])
-                if collection.extent.spatial:
+                collection = self._get_collection(collections[0])
+                if not self.input.get("bbox") and collection.extent.spatial:
                     bounds = tuple(collection.extent.spatial.bboxes[0])
                     crs = WGS84_CRS
                 renders = collection.extra_fields.get("renders", {})

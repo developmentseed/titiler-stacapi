@@ -135,7 +135,7 @@ class SimpleSTACReader(MultiBaseReader):
 
         return asset, None
 
-    def _get_asset_info(self, asset: str) -> AssetInfo:
+    def _get_asset_info(self, asset: str) -> AssetInfo:  # noqa: C901
         """Validate asset names and return asset's url.
 
         Args:
@@ -146,28 +146,46 @@ class SimpleSTACReader(MultiBaseReader):
 
         """
         asset, vrt_options = self._parse_vrt_asset(asset)
+
+        method_options: dict[str, Any] = {}
+
+        # NOTE: asset can be in form of
+        # "{asset_name}|some_option=some_value&another_option=another_value"
+        if "|" in asset:
+            asset, params = asset.split("|", 1)
+            # NOTE: Construct method options from params
+            if params:
+                for param in params.split("&"):
+                    key, value = param.split("=", 1)
+                    if key == "indexes":
+                        method_options["indexes"] = list(map(int, value.split(",")))
+                    elif key == "expression":
+                        method_options["expression"] = value
+
         if asset not in self.assets:
             raise InvalidAssetName(
                 f"{asset} is not valid. Should be one of {self.assets}"
             )
 
+        asset_modified = "expression" in method_options or vrt_options
+
         asset_info = self.input["assets"][asset]
-        info = AssetInfo(
-            url=asset_info["href"],
-            env={},
-        )
+        info = {
+            "url": asset_info["href"],
+            "name": asset,
+            "media_type": asset_info.get("type"),
+            "reader_options": {},
+            "method_options": method_options,
+        }
 
         if STAC_ALTERNATE_KEY and "alternate" in asset_info:
             if alternate := asset_info["alternate"].get(STAC_ALTERNATE_KEY):
                 info["url"] = alternate["href"]
 
-        if media_type := asset_info.get("type"):
-            info["media_type"] = media_type
-
         if header_size := asset_info.get("file:header_size"):
             info["env"]["GDAL_INGESTED_BYTES_AT_OPEN"] = header_size
 
-        if bands := asset_info.get("raster:bands"):
+        if (bands := asset_info.get("raster:bands")) and not asset_modified:
             stats = [
                 (b["statistics"]["minimum"], b["statistics"]["maximum"])
                 for b in bands

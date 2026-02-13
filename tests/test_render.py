@@ -11,6 +11,9 @@ from titiler.stacapi.dependencies import APIParams
 from titiler.stacapi.factory import get_dependency_params, get_layer_from_collections
 
 catalog_json = os.path.join(os.path.dirname(__file__), "fixtures", "catalog.json")
+catalog_json_old = os.path.join(
+    os.path.dirname(__file__), "fixtures", "catalog_old_renders.json"
+)
 
 
 @patch("titiler.stacapi.factory.Client")
@@ -32,7 +35,7 @@ def test_render(client):
     visual = collections_render["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
     assert visual["bbox"]
     assert visual["time"]
-    assert visual["render"]["asset_bidx"]
+    assert visual["render"]["assets"]
 
     color = collections_render["MAXAR_BayofBengal_Cyclone_Mocha_May_23_color"]["render"]
     assert isinstance(color["colormap"], str)
@@ -52,3 +55,26 @@ def test_render(client):
         query_params=visualr,
     )
     assert rendering.rescale
+
+
+@patch("titiler.stacapi.factory.Client")
+def test_old_render(client):
+    """test STAC items endpoints."""
+
+    with open(catalog_json_old, "r") as f:
+        collections = [
+            pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
+        ]
+        client.open.return_value.get_collections.return_value = collections
+
+    collections_render = get_layer_from_collections(
+        APIParams(url="https://something.stac"),
+        None,
+    )
+    assert len(collections_render) == 4
+
+    visual = collections_render["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
+    assert visual["bbox"]
+    assert visual["time"]
+    assert visual["render"]["assets"] == ["visual|indexes=1,2,3"]
+    assert "asset_bidx" not in visual["render"]
