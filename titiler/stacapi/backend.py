@@ -186,12 +186,13 @@ class STACAPIBackend(BaseBackend):
 
     def get_geographic_bounds(self, crs: CRS) -> BBox:
         """Override method to fetch bounds from collection metadata."""
-        if collections := self.input.get("collections", []):
+        if not self.input.get("bbox") and (
+            collections := self.input.get("collections", [])
+        ):
             if len(collections) == 1:
                 collection = self._get_collection(collections[0])
                 if collection.extent.spatial:
                     if collection.extent.spatial.bboxes[0]:
-                        print(collection.extent.spatial.bboxes[0])
                         self.bounds = list(collection.extent.spatial.bboxes[0])
                         self.crs = WGS84_CRS
 

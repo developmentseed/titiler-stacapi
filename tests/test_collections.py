@@ -51,3 +51,14 @@ def test_stac_collections(rio, get_assets, _get_collection, app):
     assert resp["maxzoom"] == 14
     assert "?assets=cog" in resp["tiles"][0]
     assert resp["bounds"] == [-87.00, 35.00, -84.00, 37.00]
+
+    response = app.get(
+        "/collections/noaa-emergency-response/WebMercatorQuad/tilejson.json",
+        params={"assets": "cog", "minzoom": 12, "maxzoom": 14, "bbox": "0,0,1,1"},
+    )
+    assert response.status_code == 200
+    resp = response.json()
+    assert resp["minzoom"] == 12
+    assert resp["maxzoom"] == 14
+    assert "?assets=cog" in resp["tiles"][0]
+    assert resp["bounds"] == [0.0, 0.0, 1.0, 1.0]
