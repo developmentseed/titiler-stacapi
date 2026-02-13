@@ -62,3 +62,20 @@ def test_stac_collections(rio, get_assets, _get_collection, app):
     assert resp["maxzoom"] == 14
     assert "?assets=cog" in resp["tiles"][0]
     assert resp["bounds"] == [0.0, 0.0, 1.0, 1.0]
+
+    response = app.get(
+        "/collections/noaa-emergency-response/info",
+    )
+    assert response.status_code == 200
+    resp = response.json()
+    assert resp["bounds"] == [-87.0, 35.0, -84.0, 37.0]
+    assert not resp["renders"]
+
+    response = app.get(
+        "/collections/noaa-emergency-response/info",
+        params={"bbox": "0,0,1,1"},
+    )
+    assert response.status_code == 200
+    resp = response.json()
+    assert resp["bounds"] == [0.0, 0.0, 1.0, 1.0]
+    assert not resp["renders"]

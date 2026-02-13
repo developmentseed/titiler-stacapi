@@ -207,7 +207,7 @@ class STACAPIBackend(BaseBackend):
         if collections := self.input.get("collections", []):
             if len(collections) == 1:
                 collection = self._get_collection(collections[0])
-                if collection.extent.spatial:
+                if not self.input.get("bbox") and collection.extent.spatial:
                     bounds = tuple(collection.extent.spatial.bboxes[0])
                     crs = WGS84_CRS
                 renders = collection.extra_fields.get("renders", {})
