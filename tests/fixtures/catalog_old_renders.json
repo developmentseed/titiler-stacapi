@@ -81,8 +81,9 @@
         "visual": {
           "title": "Visual Image",
           "assets": [
-            "visual|indexes=1,2,3"
+            "visual"
           ],
+          "asset_bidx": "visual|1,2,3",
           "minmax_zoom": [
             8,
             22
@@ -97,8 +98,9 @@
         "color": {
           "title": "Colored Image",
           "assets": [
-            "visual|indexes=1"
+            "visual"
           ],
+          "asset_bidx": "visual|1",
           "colormap": {
             "1": [0, 0, 0, 255],
             "1000": [255, 255, 255, 255]
@@ -107,13 +109,14 @@
         "visualr": {
           "title": "Rescaled Image",
           "assets": [
-            "visual|indexes=1"
+            "visual"
           ],
+          "asset_bidx": "visual|1",
           "rescale": [
             [0, 100]
           ]
         }
-      },
+    },
       "description": "Maxar OpenData | Cyclone Mocha, a category five cyclone with 130 mph winds and torrential rain, hit parts of Myanmar and Bangladesh, forcing mass evacuations ahead of the storm. The cyclone, one of the most powerful to hit the region in the last decade, made landfall on Sunday, May 14, 2023, near Sittwe in Myanmar's Rakhine state. Rain and a storm surge caused widespread flooding in low-lying areas. The United National Office Coordination of Humanitarian Affairs stated that there had been extensive damage among already vulnerable communities and that communications with the affected areas have been difficult.",
       "item_assets": {
         "visual": {
