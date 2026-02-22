@@ -12,7 +12,7 @@ from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
 from rio_tiler.errors import InvalidAssetName, MissingAssets
 from rio_tiler.io import BaseReader, MultiBaseReader, Reader
 from rio_tiler.io.stac import DEFAULT_VALID_TYPE, STAC_ALTERNATE_KEY, STACReader
-from rio_tiler.types import AssetInfo
+from rio_tiler.types import AssetInfo, AssetType
 
 
 @attr.s
@@ -36,7 +36,7 @@ class STACAPIReader(STACReader):
     exclude_asset_types: Set[str] | None = attr.ib(default=None)
 
     assets: Sequence[str] = attr.ib(init=False)
-    default_assets: Sequence[str] | None = attr.ib(default=None)
+    default_assets: Sequence[AssetType] | None = attr.ib(default=None)
 
     reader: Type[BaseReader] = attr.ib(default=Reader)
     reader_options: dict = attr.ib(factory=dict)
@@ -135,7 +135,7 @@ class SimpleSTACReader(MultiBaseReader):
 
         return asset, None
 
-    def _get_asset_info(self, asset: str) -> AssetInfo:
+    def _get_asset_info(self, asset: AssetType) -> AssetInfo:  # noqa: C901
         """Validate asset names and return asset's url.
 
         Args:
@@ -145,29 +145,51 @@ class SimpleSTACReader(MultiBaseReader):
             str: STAC asset href.
 
         """
-        asset, vrt_options = self._parse_vrt_asset(asset)
-        if asset not in self.assets:
+        asset_name: str
+        if isinstance(asset, dict):
+            if not asset.get("name"):
+                raise ValueError("asset dictionary does not have `name` key")
+            asset_name = asset["name"]
+        else:
+            asset_name = asset
+
+        asset_name, vrt_options = self._parse_vrt_asset(asset_name)
+
+        if asset_name not in self.assets:
             raise InvalidAssetName(
-                f"{asset} is not valid. Should be one of {self.assets}"
+                f"'{asset_name}' is not valid, should be one of {self.assets}"
             )
 
-        asset_info = self.input["assets"][asset]
-        info = AssetInfo(
-            url=asset_info["href"],
-            env={},
-        )
+        method_options: dict[str, Any] = {}
+        reader_options: dict[str, Any] = {}
+        if isinstance(asset, dict):
+            if indexes := asset.get("indexes"):
+                method_options["indexes"] = indexes
+            if expr := asset.get("expression"):
+                method_options["expression"] = expr
+
+            # TODO: handle `bands` options
+            # convert bands to indexes based on the band metadata
+
+        asset_modified = "expression" in method_options or vrt_options
+
+        asset_info = self.input["assets"][asset_name]
+        info = {
+            "url": asset_info["href"],
+            "name": asset_name,
+            "media_type": asset_info.get("type"),
+            "reader_options": reader_options,
+            "method_options": method_options,
+        }
 
         if STAC_ALTERNATE_KEY and "alternate" in asset_info:
             if alternate := asset_info["alternate"].get(STAC_ALTERNATE_KEY):
                 info["url"] = alternate["href"]
 
-        if media_type := asset_info.get("type"):
-            info["media_type"] = media_type
-
         if header_size := asset_info.get("file:header_size"):
             info["env"]["GDAL_INGESTED_BYTES_AT_OPEN"] = header_size
 
-        if bands := asset_info.get("raster:bands"):
+        if (bands := asset_info.get("raster:bands")) and not asset_modified:
             stats = [
                 (b["statistics"]["minimum"], b["statistics"]["maximum"])
                 for b in bands

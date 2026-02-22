@@ -38,7 +38,7 @@ from urllib3 import Retry
 from titiler.core.algorithm import BaseAlgorithm
 from titiler.core.algorithm import algorithms as available_algorithms
 from titiler.core.dependencies import (
-    AssetsBidxExprParams,
+    AssetsExprParams,
     ColorMapParams,
     DatasetParams,
     DefaultDependency,
@@ -49,6 +49,7 @@ from titiler.core.factory import BaseFactory, img_endpoint_params
 from titiler.core.resources.enums import ImageType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse
 from titiler.core.utils import render_image, tms_limits
+from titiler.extensions.render import _adapt_render_for_v2
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import (
@@ -162,6 +163,9 @@ def get_layer_from_collections(  # noqa: C901
 
         if "renders" in collection.extra_fields:
             for name, render in collection.extra_fields["renders"].items():
+                # convert asset_bidx/asset_expression to asset key
+                _adapt_render_for_v2(render)
+
                 tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
                     "tilematrixsets", None
                 )
@@ -316,8 +320,8 @@ class OGCEndpointsFactory(BaseFactory):
 
     # Because the endpoints should work with STAC Items,
     # the `layer_dependency` define which query parameters are mandatory/optional to `display` images
-    # Defaults to `titiler.core.dependencies.AssetsBidxExprParams`, `assets=` or `expression=` is required
-    layer_dependency: Type[DefaultDependency] = AssetsBidxExprParams
+    # Defaults to `titiler.core.dependencies.AssetsExprParams`, `assets=` is required
+    layer_dependency: Type[DefaultDependency] = AssetsExprParams
 
     # Rasterio Dataset Options (nodata, unscale, resampling, reproject)
     dataset_dependency: Type[DefaultDependency] = DatasetParams
