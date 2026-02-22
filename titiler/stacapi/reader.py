@@ -12,7 +12,7 @@ from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
 from rio_tiler.errors import InvalidAssetName, MissingAssets
 from rio_tiler.io import BaseReader, MultiBaseReader, Reader
 from rio_tiler.io.stac import DEFAULT_VALID_TYPE, STAC_ALTERNATE_KEY, STACReader
-from rio_tiler.types import AssetInfo
+from rio_tiler.types import AssetInfo, AssetType
 
 
 @attr.s
@@ -36,7 +36,7 @@ class STACAPIReader(STACReader):
     exclude_asset_types: Set[str] | None = attr.ib(default=None)
 
     assets: Sequence[str] = attr.ib(init=False)
-    default_assets: Sequence[str] | None = attr.ib(default=None)
+    default_assets: Sequence[AssetType] | None = attr.ib(default=None)
 
     reader: Type[BaseReader] = attr.ib(default=Reader)
     reader_options: dict = attr.ib(factory=dict)
@@ -135,7 +135,7 @@ class SimpleSTACReader(MultiBaseReader):
 
         return asset, None
 
-    def _get_asset_info(self, asset: str) -> AssetInfo:  # noqa: C901
+    def _get_asset_info(self, asset: AssetType) -> AssetInfo:  # noqa: C901
         """Validate asset names and return asset's url.
 
         Args:
@@ -145,36 +145,40 @@ class SimpleSTACReader(MultiBaseReader):
             str: STAC asset href.
 
         """
-        asset, vrt_options = self._parse_vrt_asset(asset)
+        asset_name: str
+        if isinstance(asset, dict):
+            if not asset.get("name"):
+                raise ValueError("asset dictionary does not have `name` key")
+            asset_name = asset["name"]
+        else:
+            asset_name = asset
+
+        asset_name, vrt_options = self._parse_vrt_asset(asset_name)
+
+        if asset_name not in self.assets:
+            raise InvalidAssetName(
+                f"'{asset_name}' is not valid, should be one of {self.assets}"
+            )
 
         method_options: dict[str, Any] = {}
+        reader_options: dict[str, Any] = {}
+        if isinstance(asset, dict):
+            if indexes := asset.get("indexes"):
+                method_options["indexes"] = indexes
+            if expr := asset.get("expression"):
+                method_options["expression"] = expr
 
-        # NOTE: asset can be in form of
-        # "{asset_name}|some_option=some_value&another_option=another_value"
-        if "|" in asset:
-            asset, params = asset.split("|", 1)
-            # NOTE: Construct method options from params
-            if params:
-                for param in params.split("&"):
-                    key, value = param.split("=", 1)
-                    if key == "indexes":
-                        method_options["indexes"] = list(map(int, value.split(",")))
-                    elif key == "expression":
-                        method_options["expression"] = value
-
-        if asset not in self.assets:
-            raise InvalidAssetName(
-                f"{asset} is not valid. Should be one of {self.assets}"
-            )
+            # TODO: handle `bands` options
+            # convert bands to indexes based on the band metadata
 
         asset_modified = "expression" in method_options or vrt_options
 
-        asset_info = self.input["assets"][asset]
+        asset_info = self.input["assets"][asset_name]
         info = {
             "url": asset_info["href"],
-            "name": asset,
+            "name": asset_name,
             "media_type": asset_info.get("type"),
-            "reader_options": {},
+            "reader_options": reader_options,
             "method_options": method_options,
         }
 

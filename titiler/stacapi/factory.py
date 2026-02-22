@@ -49,9 +49,9 @@ from titiler.core.factory import BaseFactory, img_endpoint_params
 from titiler.core.resources.enums import ImageType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse
 from titiler.core.utils import render_image, tms_limits
+from titiler.extensions.render import _adapt_render_for_v2
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
-from titiler.stacapi.compat import _adapt_render_for_v2
 from titiler.stacapi.dependencies import (
     APIParams,
     BackendParams,

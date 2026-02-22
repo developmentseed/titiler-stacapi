@@ -31,12 +31,12 @@ from titiler.core.models.OGC import Conformance, Landing
 from titiler.core.resources.enums import OptionalHeader
 from titiler.core.utils import accept_media_type, create_html_response, update_openapi
 from titiler.extensions import wmtsExtension
+from titiler.extensions.render import _adapt_render_for_v2
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.mosaic.extensions.wmts import wmtsExtension as wmtsExtensionMosaic
 from titiler.mosaic.factory import MosaicTilerFactory
 from titiler.stacapi import __version__ as titiler_stacapi_version
 from titiler.stacapi.backend import STACAPIBackend
-from titiler.stacapi.compat import _adapt_render_for_v2
 from titiler.stacapi.dependencies import (
     BackendParams,
     CollectionSearch,

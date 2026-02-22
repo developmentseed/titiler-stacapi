@@ -76,5 +76,5 @@ def test_old_render(client):
     visual = collections_render["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
     assert visual["bbox"]
     assert visual["time"]
-    assert visual["render"]["assets"] == ["visual|indexes=1,2,3"]
+    assert visual["render"]["assets"] == ["visual|bidx=1,2,3"]
     assert "asset_bidx" not in visual["render"]

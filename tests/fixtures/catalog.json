@@ -81,7 +81,7 @@
         "visual": {
           "title": "Visual Image",
           "assets": [
-            "visual|indexes=1,2,3"
+            "visual|bidx=1,2,3"
           ],
           "minmax_zoom": [
             8,
@@ -97,7 +97,7 @@
         "color": {
           "title": "Colored Image",
           "assets": [
-            "visual|indexes=1"
+            "visual|bidx=1"
           ],
           "colormap": {
             "1": [0, 0, 0, 255],
@@ -107,7 +107,7 @@
         "visualr": {
           "title": "Rescaled Image",
           "assets": [
-            "visual|indexes=1"
+            "visual|bidx=1"
           ],
           "rescale": [
             [0, 100]
