@@ -5,7 +5,6 @@ import os
 from unittest.mock import patch
 
 import pystac
-import pytest
 
 from .conftest import mock_rasterio_open
 
@@ -29,10 +28,15 @@ def test_stac_items(get_stac_item, rio, app):
     assert response.status_code == 200
     assert response.json() == ["cog"]
 
-    with pytest.warns(UserWarning):
-        response = app.get(
-            "/collections/noaa-emergency-response/items/20200307aC0853900w361030/info",
-        )
+    response = app.get(
+        "/collections/noaa-emergency-response/items/20200307aC0853900w361030/info",
+    )
+    assert response.status_code == 422
+
+    response = app.get(
+        "/collections/noaa-emergency-response/items/20200307aC0853900w361030/info",
+        params={"assets": ":all:"},
+    )
     assert response.status_code == 200
     assert response.json()["cog"]
 

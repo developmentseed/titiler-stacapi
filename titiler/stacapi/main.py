@@ -18,7 +18,7 @@ from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 
 from titiler.core import __version__ as titiler_version
-from titiler.core.dependencies import AssetsBidxExprParams
+from titiler.core.dependencies import AssetsExprParams
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import (
     AlgorithmFactory,
@@ -31,6 +31,7 @@ from titiler.core.models.OGC import Conformance, Landing
 from titiler.core.resources.enums import OptionalHeader
 from titiler.core.utils import accept_media_type, create_html_response, update_openapi
 from titiler.extensions import wmtsExtension
+from titiler.extensions.render import _adapt_render_for_v2
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.mosaic.extensions.wmts import wmtsExtension as wmtsExtensionMosaic
 from titiler.mosaic.factory import MosaicTilerFactory
@@ -141,6 +142,15 @@ APP_CONFORMS_TO.update(ogc_endpoints.conforms_to)
 # Notes:
 # - The `path_dependency` is set to `STACCollectionSearchParams` which define `{collection_id}`
 # `Path` dependency and other Query parameters used to construct STAC API Search request.
+
+
+def _get_renders_collection(obj) -> dict:
+    renders = obj.info().renders or {}
+    for render in renders.values():
+        _adapt_render_for_v2(render)
+    return renders
+
+
 collection = MosaicTilerFactory(
     path_dependency=CollectionSearch,
     backend=STACAPIBackend,
@@ -148,12 +158,12 @@ collection = MosaicTilerFactory(
     dataset_reader=SimpleSTACReader,
     assets_accessor_dependency=STACAPIExtensionParams,
     optional_headers=optional_headers,
-    layer_dependency=AssetsBidxExprParams,
+    layer_dependency=AssetsExprParams,
     router_prefix="/collections/{collection_id}",
     add_viewer=True,
     extensions=[
         wmtsExtensionMosaic(
-            get_renders=lambda obj: obj.info().renders or {}  # type: ignore [attr-defined]
+            get_renders=_get_renders_collection  # type: ignore [attr-defined]
         ),
     ],
     templates=templates,
@@ -169,13 +179,22 @@ APP_CONFORMS_TO.update(collection.conforms_to)
 # but in this project we use a custom `path_dependency=ItemIdParams`, which define `{collection_id}` and `{item_id}` as
 # `Path` dependencies. Then the `ItemIdParams` dependency will fetch the STAC API endpoint to get the STAC Item. The Item
 # will then be used in our custom `STACReader`.
+
+
+def _get_renders_item(obj) -> dict:
+    renders = obj.item.properties.get("renders", {})
+    for render in renders.values():
+        _adapt_render_for_v2(render)
+    return renders
+
+
 stac = MultiBaseTilerFactory(
     reader=STACAPIReader,
     path_dependency=ItemIdParams,
     router_prefix="/collections/{collection_id}/items/{item_id}",
     add_viewer=True,
     extensions=[
-        wmtsExtension(get_renders=lambda obj: obj.item.properties.get("renders", {})),  # type: ignore [attr-defined]
+        wmtsExtension(get_renders=_get_renders_item),  # type: ignore [attr-defined]
     ],
     templates=templates,
 )

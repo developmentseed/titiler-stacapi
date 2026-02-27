@@ -102,8 +102,7 @@ def test_wmts_getcapabilities(client, app):
 
     params = layer.resourceURLs[0]["template"].split("?")[1]
     query = parse_qs(params)
-    assert query["assets"] == ["visual"]
-    assert query["asset_bidx"] == ["visual|1,2,3"]
+    assert query["assets"] == ["visual|bidx=1,2,3"]
 
     layer = wmts["MAXAR_BayofBengal_Cyclone_Mocha_May_23_cube_dimensions_visual"]
     assert "TIME" in layer.dimensions
@@ -331,11 +330,12 @@ def test_wmts_gettile_param_override(client, item_search, rio, app):
             "TILEROW": 7188,
             "TILECOL": 12375,
             "TIME": "2023-01-05",
-            "expression": "(where(visual_invalid >= 0))",
+            "assets": "visual_invalid",
+            "expression": "(where(b1 >= 0))",
         },
     )
-    assert response.status_code == 500
-    assert "Could not find any valid assets" in response.json()["detail"]
+    assert response.status_code == 404
+    assert "'visual_invalid' is not valid" in response.json()["detail"]
 
     response = app.get(
         "/wmts",
@@ -355,7 +355,7 @@ def test_wmts_gettile_param_override(client, item_search, rio, app):
         },
     )
     assert response.status_code == 404
-    assert "yo is not valid." in response.json()["detail"]
+    assert "'yo' is not valid" in response.json()["detail"]
 
     response = app.get(
         "/wmts",
@@ -376,7 +376,7 @@ def test_wmts_gettile_param_override(client, item_search, rio, app):
         ),
     )
     assert response.status_code == 404
-    assert "yo is not valid." in response.json()["detail"]
+    assert "'yo' is not valid" in response.json()["detail"]
 
     response = app.get(
         "/wmts",
