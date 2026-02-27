@@ -2,7 +2,7 @@
 
 import json
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 
 import attr
 import pystac
@@ -22,7 +22,7 @@ from rio_tiler.utils import CRS_to_uri
 from urllib3 import Retry
 
 from titiler.stacapi.dependencies import APIParams, Search
-from titiler.stacapi.reader import SimpleSTACReader
+from titiler.stacapi.reader import Item, SimpleSTACReader
 from titiler.stacapi.settings import CacheSettings, RetrySettings
 
 cache_config = CacheSettings()
@@ -72,7 +72,7 @@ class STACAPIBackend(BaseBackend):
         """Get asset name."""
         return f"{asset['collection']}/{asset['id']}"
 
-    def assets_for_tile(self, x: int, y: int, z: int, **kwargs: Any) -> list[dict]:
+    def assets_for_tile(self, x: int, y: int, z: int, **kwargs: Any) -> list[Item]:
         """Retrieve assets for tile."""
         bbox = self.tms.bounds(Tile(x, y, z))
         return self.get_assets(Polygon.from_bounds(*bbox), **kwargs)
@@ -83,7 +83,7 @@ class STACAPIBackend(BaseBackend):
         lat: float,
         coord_crs: CRS = WGS84_CRS,
         **kwargs: Any,
-    ) -> list[dict]:
+    ) -> list[Item]:
         """Retrieve assets for point."""
         if coord_crs != WGS84_CRS:
             xs, ys = transform(coord_crs, WGS84_CRS, [lng], [lat])
@@ -99,7 +99,7 @@ class STACAPIBackend(BaseBackend):
         ymax: float,
         coord_crs: CRS = WGS84_CRS,
         **kwargs: Any,
-    ) -> list[dict]:
+    ) -> list[Item]:
         """Retrieve assets for bbox."""
         if coord_crs != WGS84_CRS:
             xmin, ymin, xmax, ymax = transform_bounds(
@@ -131,7 +131,7 @@ class STACAPIBackend(BaseBackend):
         limit: int | None = None,
         max_items: int | None = None,
         fields: list[str] | None = None,
-    ) -> list[dict]:
+    ) -> list[Item]:
         """Find assets."""
 
         search_query = {
@@ -161,7 +161,7 @@ class STACAPIBackend(BaseBackend):
         results = ItemSearch(
             f"{self.api_params['url']}/search", stac_io=stac_api_io, **params
         )
-        return list(results.items_as_dicts())
+        return [cast(Item, itm) for itm in results.items_as_dicts()]
 
     @cached(  # type: ignore
         ttl_cache,
@@ -213,5 +213,7 @@ class STACAPIBackend(BaseBackend):
                 renders = collection.extra_fields.get("renders", {})
 
         return MosaicInfo(
-            bounds=bounds, crs=CRS_to_uri(crs) or crs.to_wkt(), renders=renders
+            bounds=bounds,
+            crs=CRS_to_uri(crs) or crs.to_wkt(),
+            renders=renders,
         )
