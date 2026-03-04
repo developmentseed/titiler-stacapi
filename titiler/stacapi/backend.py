@@ -135,7 +135,7 @@ class STACAPIBackend(BaseBackend):
 
         search_query = {
             **self.input,
-            "method": "POST" if self.input.get("filter_expr") else "GET",
+            "method": "GET" if self.input.get("filter") else "POST",
             "sortby": sortby,
             "limit": limit or 10,
             "max_items": max_items or 100,
