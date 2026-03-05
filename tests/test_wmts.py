@@ -5,9 +5,15 @@ import os
 from unittest.mock import patch
 from urllib.parse import parse_qs
 
+import morecantile
 import pystac
 import rasterio
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from morecantile.defaults import TileMatrixSets
 from owslib.wmts import WebMapTileService
+
+from titiler.stacapi.factory import OGCEndpointsFactory
 
 item_json = os.path.join(
     os.path.dirname(__file__), "fixtures", "46_033111301201_1040010082988200.json"
@@ -651,3 +657,47 @@ def test_wmts_gettile_REST(client, item_search, rio, app):
         },
     )
     assert response.headers["content-type"] == "image/png"
+
+
+@patch("titiler.stacapi.factory.Client")
+def test_custom_tms(client):
+    """Test OGC WMTS endpoint with custom TMS."""
+    with open(catalog_json, "r") as f:
+        collections = [
+            pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
+        ]
+        client.open.return_value.get_collections.return_value = collections
+
+    app = FastAPI()
+    app.state.stac_url = "http://something.stac"
+
+    supported_tms = TileMatrixSets(
+        {
+            "EPSG:3857": morecantile.tms.get("WebMercatorQuad"),
+        }
+    )
+    ogc_endpoints = OGCEndpointsFactory(
+        supported_tms=supported_tms,
+    )
+    app.include_router(
+        ogc_endpoints.router,
+    )
+
+    with TestClient(app) as client:
+        client.get("/wtms")
+        response = client.get(
+            "/wmts",
+            params={
+                "service": "WMTS",
+                "version": "1.0.0",
+                "request": "getcapabilities",
+            },
+        )
+        assert response.status_code == 200
+        wmts = WebMapTileService(url="/wmts", xml=response.text.encode())
+        layers = list(wmts.contents)
+        assert len(layers) == 4
+        assert "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual" in layers
+
+        layer = wmts["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
+        assert "EPSG:3857" in layer.tilematrixsetlinks

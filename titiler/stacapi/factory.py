@@ -82,6 +82,8 @@ jinja2_env = jinja2.Environment(
             jinja2.PackageLoader("titiler.core", "templates"),
         ]
     ),
+    lstrip_blocks=True,
+    trim_blocks=True,
 )
 DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
 
@@ -162,8 +164,8 @@ def get_layer_from_collections(  # noqa: C901
 
         if "renders" in collection.extra_fields:
             for name, render in collection.extra_fields["renders"].items():
-                tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
-                    "tilematrixsets", None
+                render_tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
+                    "tilematrixsets", {}
                 )
                 output_format = render.pop("format", None)
                 aggregation = render.pop("aggregation", None)
@@ -189,9 +191,12 @@ def get_layer_from_collections(  # noqa: C901
                     layer["bbox"] = tuple(spatial_extent.bboxes[0])
 
                 if supported_tms:
-                    tilematrixsets = tilematrixsets or {
+                    tilematrixsets: dict[str, tuple[int, int] | None] = {
                         tms_id: None for tms_id in supported_tms.list()
                     }
+                    for tms_id, zooms in tilematrixsets.items():
+                        if zooms := render_tilematrixsets.get(tms_id):
+                            tilematrixsets[tms_id] = zooms
 
                     layer["tilematrixsets"] = {}
                     for tms_id, zooms in tilematrixsets.items():
@@ -930,10 +935,10 @@ class OGCEndpointsFactory(BaseFactory):
                         "request": request,
                         "layers": [layer for _, layer in layers.items()],
                         "service_url": self.url_for(request, "web_map_tile_service"),
-                        "tilematrixsets": [
-                            self.supported_tms.get(tms)
+                        "tilematrixsets": {
+                            tms: self.supported_tms.get(tms)
                             for tms in self.supported_tms.list()
-                        ],
+                        },
                         "media_types": MediaType,
                     },
                     media_type="application/xml",

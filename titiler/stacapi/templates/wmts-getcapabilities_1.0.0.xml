@@ -111,9 +111,9 @@
       {% endif %}
     </Layer>
   {% endfor %}
-  {% for tms in tilematrixsets %}
+  {% for tms_id, tms in tilematrixsets.items() %}
   <TileMatrixSet>
-    <ows:Identifier>{{ tms.id }}</ows:Identifier>
+    <ows:Identifier>{{ tms_id }}</ows:Identifier>
     {% if tms.crs.to_epsg() %}
       <ows:SupportedCRS>urn:ogc:def:crs:EPSG::{{tms.crs.to_epsg()}}</ows:SupportedCRS>
     {% else %}
