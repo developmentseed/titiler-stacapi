@@ -6,6 +6,8 @@
 
 * fix: better handling of custom TMS ids in WMTS endpoints
 * fix: CQL filter expression support in ItemSearch requests
+* remove: orjson (pydantic now serializes the model faster than orjson)
+* remove: `cacert.org` certificats updates in Docker image
 
 ## [1.1.2] - 2026-02-12
 

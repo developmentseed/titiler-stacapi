@@ -340,7 +340,7 @@ def test_wmts_gettile_param_override(client, item_search, rio, app):
             "expression": "(where(visual_invalid >= 0))",
         },
     )
-    assert response.status_code == 500
+    assert response.status_code == 400
     assert "Could not find any valid assets" in response.json()["detail"]
 
     response = app.get(
