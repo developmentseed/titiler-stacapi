@@ -64,6 +64,8 @@ templates_location.append(jinja2.PackageLoader("titiler.core", "templates"))
 jinja2_env = jinja2.Environment(
     autoescape=jinja2.select_autoescape(["html", "xml"]),
     loader=jinja2.ChoiceLoader(templates_location),
+    lstrip_blocks=True,
+    trim_blocks=True,
 )
 templates = Jinja2Templates(env=jinja2_env)
 
