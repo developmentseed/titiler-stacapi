@@ -674,7 +674,6 @@ def test_custom_tms(client):
     supported_tms = TileMatrixSets(
         {
             "EPSG:3857": morecantile.tms.get("WebMercatorQuad"),
-            # "WebMercatorQuad": morecantile.tms.get("WebMercatorQuad"),
         }
     )
     ogc_endpoints = OGCEndpointsFactory(
