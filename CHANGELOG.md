@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-03-05
+
+* fix: better handling of custom TMS ids in WMTS endpoints
+* fix: CQL filter expression support in ItemSearch requests
+
 ## [1.1.2] - 2026-02-12
 
 * fix: render's parameter handling and query-parameter override
