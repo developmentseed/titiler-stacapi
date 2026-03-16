@@ -8,7 +8,6 @@ import morecantile
 import rasterio
 from fastapi import FastAPI, Query
 from fastapi import __version__ as fastapi_version
-from fastapi.responses import ORJSONResponse
 from morecantile import TileMatrixSets
 from pydantic import __version__ as pydantic_version
 from rio_tiler import __version__ as rio_tiler_version
@@ -65,6 +64,8 @@ templates_location.append(jinja2.PackageLoader("titiler.core", "templates"))
 jinja2_env = jinja2.Environment(
     autoescape=jinja2.select_autoescape(["html", "xml"]),
     loader=jinja2.ChoiceLoader(templates_location),
+    lstrip_blocks=True,
+    trim_blocks=True,
 )
 templates = Jinja2Templates(env=jinja2_env)
 
@@ -230,7 +231,6 @@ APP_CONFORMS_TO.update(cmaps.conforms_to)
     "/",
     response_model=Landing,
     response_model_exclude_none=True,
-    response_class=ORJSONResponse,
     responses={
         200: {
             "content": {

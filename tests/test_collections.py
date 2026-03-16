@@ -1,4 +1,4 @@
-"""Test titiler.stacapi Item endpoints."""
+"""Test titiler.stacapi collections endpoints."""
 
 import json
 import os
@@ -79,3 +79,39 @@ def test_stac_collections(rio, get_assets, _get_collection, app):
     resp = response.json()
     assert resp["bounds"] == [0.0, 0.0, 1.0, 1.0]
     assert not resp["renders"]
+
+
+@patch("titiler.stacapi.backend.ItemSearch")
+def test_stac_collections_filter(items_search, app):
+    """test arguments passed to ItemSearch."""
+
+    class ItemSearch:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def items_as_dicts(self):
+            return [{}]
+
+    items_search.return_value = ItemSearch()
+    _ = app.get(
+        "/collections/noaa-emergency-response/tiles/WebMercatorQuad/0/0/0/assets",
+        params={
+            "filter": json.dumps({"op": "=", "args": [{"property": "value"}, "1"]}),
+            "filter-lang": "cql2-json",
+        },
+    )
+    assert items_search.call_args[1]["filter"] == {
+        "op": "=",
+        "args": [{"property": "value"}, "1"],
+    }
+    assert items_search.call_args[1]["filter_lang"] == "cql2-json"
+
+    _ = app.get(
+        "/collections/noaa-emergency-response/tiles/WebMercatorQuad/0/0/0/assets",
+        params={
+            "filter": "(value = '1')",
+            "filter-lang": "cql2-text",
+        },
+    )
+    assert items_search.call_args[1]["filter"] == "(value = '1')"
+    assert items_search.call_args[1]["filter_lang"] == "cql2-text"
