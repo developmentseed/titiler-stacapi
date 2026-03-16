@@ -12,13 +12,14 @@ The `Item` endpoints are created using TiTiler's [MultiBaseTilerFactory](https:/
 | `POST` | `/collections/{collection_id}/items/{item_id}/statistics`                                                   | GeoJSON ([Statistics][multistats_geojson_model]) | return assets statistics for a GeoJSON (merged)
 | `GET`  | `/collections/{collection_id}/items/{item_id}/tiles`                                                        | JSON                                             | List of OGC Tilesets available
 | `GET`  | `/collections/{collection_id}/items/{item_id}/tiles/{tileMatrixSetId}`                                      | JSON                                             | OGC Tileset metadata
-| `GET`  | `/collections/{collection_id}/items/{item_id}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}[@{scale}x][.{format}]`  | image/bin                                        | create a web map tile image from assets
+| `GET`  | `/collections/{collection_id}/items/{item_id}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}[.{format}]`             | image/bin                                        | create a web map tile image from assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}[/{TileMatrixSetId}]/tilejson.json`                            | JSON ([TileJSON][tilejson_model])                | return a Mapbox TileJSON document
 | `GET`  | `/collections/{collection_id}/items/{item_id}[/{TileMatrixSetId}]/map.html`                                 | HTML                                             | simple map viewer
 | `GET`  | `/collections/{collection_id}/items/{item_id}/point/{lon},{lat}`                                            | JSON ([Point][multipoint_model])                 | return pixel values from assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}/preview[.{format}]`                                           | image/bin                                        | create a preview image from assets
 | `GET`  | `/collections/{collection_id}/items/{item_id}/bbox/{minx},{miny},{maxx},{maxy}[/{width}x{height}].{format}` | image/bin                                        | create an image from part of assets
 | `POST` | `/collections/{collection_id}/items/{item_id}/feature[/{width}x{height}][.{format}]`                        | image/bin                                        | create an image from a geojson feature intersecting assets
+| `GET`  | `/collections/{collection_id}/items/{item_id}/WMTSCapabilities.xml`                                         | XML                                              | return OGC WMTS Get Capabilities
 
 ### Tiles
 
@@ -31,14 +32,13 @@ The `Item` endpoints are created using TiTiler's [MultiBaseTilerFactory](https:/
     - **z** (int): TMS tile's zoom level.
     - **x** (int): TMS tile's column.
     - **y** (int): TMS tile's row.
-    - **scale** (int): Tile size scale, default is set to 1 (256x256). **Optional**
     - **format** (str): Output image format, default is set to None and will be either JPEG or PNG depending on masked value. **Optional**
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names.  **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
+    - **tilesize** (int): overwrite TMS tileWidth x tileHeight with fixed tilesize.
     - **nodata** (str, int, float): Overwrite internal Nodata value.
     - **unscale** (bool): Apply dataset internal Scale/Offset.
     - **resampling** (str): RasterIO resampling algorithm. Defaults to `nearest`.
@@ -54,9 +54,6 @@ The `Item` endpoints are created using TiTiler's [MultiBaseTilerFactory](https:/
     - **padding** (int): Padding to apply to each tile edge. Helps reduce resampling artefacts along edges. Defaults to `0`
     - **algorithm** (str): Custom algorithm name (e.g `hillshade`).
     - **algorithm_params** (str): JSON encoded algorithm parameters.
-
-!!! important
-    **assets** OR **expression** is required
 
 Example:
 
@@ -75,10 +72,9 @@ Example:
     - **format**: Output image format, default is set to None and will be either JPEG or PNG depending on masked value. **Optional**
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names.  **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **max_size** (int): Max image size, default is 1024.
     - **height** (int): Force output image height.
     - **width** (int): Force output image width.
@@ -98,8 +94,6 @@ Example:
     - **algorithm_params** (str): JSON encoded algorithm parameters.
 
 !!! important
-    - **assets** OR **expression** is required
-
     - if **height** and **width** are provided **max_size** will be ignored.
 
 Example:
@@ -122,10 +116,9 @@ Example:
     - **format** (str): Output image format, default is set to None and will be either JPEG or PNG depending on masked value. **Optional**
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names.  **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **max_size** (int): Max image size.
     - **coord_crs** (str): Coordinate Reference System of the input coordinates. Default to `epsg:4326`.
     - **dst_crs** (str): Output Coordinate Reference System. Default to `coord_crs`.
@@ -166,10 +159,9 @@ Example:
     - **format** (str): Output image format, default is set to None and will be either JPEG or PNG depending on masked value. **Optional**
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names.  **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **max_size** (int): Max image size.
     - **coord_crs** (str): Coordinate Reference System of the input coordinates. Default to `epsg:4326`.
     - **dst_crs** (str): Output Coordinate Reference System. Default to `coord_crs`.
@@ -188,8 +180,6 @@ Example:
     - **algorithm_params** (str): JSON encoded algorithm parameters.
 
 !!! important
-    - **assets** OR **expression** is required
-
     - if **height** and **width** are provided **max_size** will be ignored.
 
 Example:
@@ -208,17 +198,13 @@ Example:
     - **lon,lat,** (str): Comma (',') delimited point Longitude and Latitude WGS84.
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names.  **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **nodata** (str, int, float): Overwrite internal Nodata value.
     - **unscale** (bool): Apply dataset internal Scale/Offset.
     - **resampling** (str): RasterIO resampling algorithm. Defaults to `nearest`.
     - **reproject** (str): WarpKernel resampling algorithm (only used when doing re-projection). Defaults to `nearest`.
-
-!!! important
-    **assets** OR **expression** is required
 
 Example:
 
@@ -234,10 +220,9 @@ Example:
     - **TileMatrixSetId**: TileMatrixSet name, default is `WebMercatorQuad`.
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names.  **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **tile_format** (str): Output image format, default is set to None and will be either JPEG or PNG depending on masked value.
     - **tile_scale** (int): Tile size scale, default is set to 1 (256x256).
     - **minzoom** (int): Overwrite default minzoom.
@@ -256,9 +241,6 @@ Example:
     - **buffer** (float): Buffer on each side of the given tile. It must be a multiple of `0.5`. Output **tilesize** will be expanded to `tilesize + 2 * buffer` (e.g 0.5 = 257x257, 1.0 = 258x258).
     - **padding** (int): Padding to apply to each tile edge. Helps reduce resampling artefacts along edges. Defaults to `0`
 
-!!! important
-    **assets** OR **expression** is required
-
 Example:
 
 - `https://myendpoint/collections/mycollection/items/oneitem/tilejson.json?assets=B01`
@@ -275,7 +257,11 @@ Example:
     - **item_id** (str): STAC Item Identifier.
 
 - QueryParams:
-    - **assets** (array[str]): asset names. Default to all available assets.
+    - **assets** (array[str]): asset names. **Required**
+
+!!! note
+    
+    Use `assets=:all:` to use all available assets
 
 Example:
 
@@ -288,9 +274,11 @@ Example:
     - **item_id** (str): STAC Item Identifier.
 
 - QueryParams:
-    - **collection** (str): STAC Collection Identifier. **Required**
-    - **item** (str): STAC Item Identifier. **Required**
-    - **assets** (array[str]): asset names. Default to all available assets.
+    - **assets** (array[str]): asset names. **Required**
+
+!!! note
+    
+    Use `assets=:all:` to use all available assets
 
 Example:
 
@@ -298,7 +286,6 @@ Example:
 
 
 `:endpoint:/collections/{collection_id}/items/{item_id}/assets` - Return the list of available assets
-
 
 ### Available Assets
 
@@ -321,11 +308,9 @@ Example:
     - **item_id** (str): STAC Item Identifier.
 
 - QueryParams:
-    - **collection** (str): STAC Collection Identifier. **Required**
-    - **item** (str): STAC Item Identifier. **Required**
-    - **assets** (array[str]): asset names. Default to all available assets.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
-    - **asset_expression** (array[str]): Per asset band math expression (e.g `Asset1|b1\*b2`).
+    - **assets** (array[str]): asset names. **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **max_size** (int): Max image size from which to calculate statistics, default is 1024.
     - **height** (int): Force image height from which to calculate statistics.
     - **width** (int): Force image width from which to calculate statistics.
@@ -337,6 +322,10 @@ Example:
     - **p** (array[int]): Percentile values.
     - **histogram_bins** (str): Histogram bins.
     - **histogram_range** (str): Comma (',') delimited Min,Max histogram bounds
+
+!!! note
+    
+    Use `assets=:all:` to use all available assets
 
 Example:
 
@@ -350,12 +339,9 @@ Example:
     - **item_id** (str): STAC Item Identifier.
 
 - QueryParams:
-    - **collection** (str): STAC Collection Identifier. **Required**
-    - **item** (str): STAC Item Identifier. **Required**
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names. **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **max_size** (int): Max image size from which to calculate statistics, default is 1024.
     - **height** (int): Force image height from which to calculate statistics.
     - **width** (int): Force image width from which to calculate statistics.
@@ -367,6 +353,10 @@ Example:
     - **p** (array[int]): Percentile values.
     - **histogram_bins** (str): Histogram bins.
     - **histogram_range** (str): Comma (',') delimited Min,Max histogram bounds
+
+!!! note
+    
+    Use `assets=:all:` to use all available assets
 
 Example:
 
@@ -383,10 +373,9 @@ Example:
     - **item_id** (str): STAC Item Identifier.
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band math expression (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names. **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **max_size** (int): Max image size from which to calculate statistics.
     - **height** (int): Force image height from which to calculate statistics.
     - **width** (int): Force image width from which to calculate statistics.
@@ -402,10 +391,13 @@ Example:
     - **histogram_bins** (str): Histogram bins.
     - **histogram_range** (str): Comma (',') delimited Min,Max histogram bounds
 
+!!! note
+    
+    Use `assets=:all:` to use all available assets
+
 Example:
 
 - `https://myendpoint/collections/mycollection/items/oneitem/statistics?assets=B01&categorical=true&c=1&c=2&c=3&p=2&p98`
-
 
 [bounds_model]: https://github.com/cogeotiff/rio-tiler/blob/9aaa88000399ee8d36e71d176f67b6ea3ec53f2d/rio_tiler/models.py#L43-L46
 [tilejson_model]: https://github.com/developmentseed/titiler/blob/2335048a407f17127099cbbc6c14e1328852d619/src/titiler/core/titiler/core/models/mapbox.py#L16-L38

@@ -2,19 +2,20 @@
 ### STAC Collections endpoints
 
 
-| Method | URL                                                                              | Output                                  | Description
-| ------ | ---------------------------------------------------------------------------------|-----------------------------------------|--------------
-| `GET`  | `/collections/{collection_id}/info`                                              | JSON                                    | return mosaic's basic info
-| `GET`  | `/collections/{collection_id}/info.geojson`                                      | GeoJSON                                 | return mosaic's basic info as a GeoJSON feature
-| `GET`  | `/collections/{collection_id}/tiles`                                             | JSON                                    | List of OGC Tilesets available
-| `GET`  | `/collections/{collection_id}/tiles/{tileMatrixSetId}`                           | JSON                                    | OGC Tileset metadata
-| `GET`  | `/collections/{collection_id}/tiles/{TileMatrixSetId}/{z}/{x}/{y}[@{scale}x][.{format}]` | image/bin                       | Create a web map tile image for a collection and a tile index
-| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/tilejson.json`                           | JSON ([TileJSON][tilejson_model]) | Return a Mapbox TileJSON document
-| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/map.html`                                | HTML                              | simple map viewer
-| `GET`  | `/collections/{collection_id}/point/{lon},{lat}`                                            | JSON      | return pixel value from a mosaic assets
-| `GET`  | `/collections/{collection_id}/bbox/{minx},{miny},{maxx},{maxy}/assets`                      | JSON      | return list of assets intersecting a bounding box
-| `GET`  | `/collections/{collection_id}/point/{lon},{lat}/assets`                                     | JSON      | return list of assets intersecting a point
-| `GET`  | `/collections/{collection_id}/tiles/{tileMatrixSetId}/{z}/{x}/{y}/assets`                   | JSON      | return list of assets intersecting a XYZ tile
+| Method | URL                                                                              | Output                            | Description
+| ------ | ---------------------------------------------------------------------------------|-----------------------------------|--------------
+| `GET`  | `/collections/{collection_id}/info`                                              | JSON                              | return mosaic's basic info
+| `GET`  | `/collections/{collection_id}/info.geojson`                                      | GeoJSON                           | return mosaic's basic info as a GeoJSON feature
+| `GET`  | `/collections/{collection_id}/tiles`                                             | JSON                              | List of OGC Tilesets available
+| `GET`  | `/collections/{collection_id}/tiles/{tileMatrixSetId}`                           | JSON                              | OGC Tileset metadata
+| `GET`  | `/collections/{collection_id}/tiles/{TileMatrixSetId}/{z}/{x}/{y}[.{format}]`    | image/bin                         | Create a web map tile image for a collection and a tile index
+| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/tilejson.json`                   | JSON ([TileJSON][tilejson_model]) | Return a Mapbox TileJSON document
+| `GET`  | `/collections/{collection_id}/{TileMatrixSetId}/map.html`                        | HTML                              | simple map viewer
+| `GET`  | `/collections/{collection_id}/point/{lon},{lat}`                                 | JSON                              | return pixel value from a mosaic assets
+| `GET`  | `/collections/{collection_id}/tiles/{tileMatrixSetId}/{z}/{x}/{y}/assets`        | JSON                              | return list of assets intersecting a XYZ tile
+| `GET`  | `/collections/{collection_id}/bbox/{minx},{miny},{maxx},{maxy}/assets`           | JSON                              | return list of assets intersecting a bounding box
+| `GET`  | `/collections/{collection_id}/point/{lon},{lat}/assets`                          | JSON                              | return list of assets intersecting a point
+| `GET`  | `/collections/{collection_id}/WMTSCapabilities.xml`                              | XML                               | return OGC WMTS Get Capabilities
 
 ### Tiles
 
@@ -26,14 +27,13 @@
     - **z**: Tile's zoom level.
     - **x**: Tile's column.
     - **y**: Tile's row.
-    - **scale**: Tile size scale, default is set to 1 (256x256). OPTIONAL
     - **format**: Output image format, default is set to None and will be either JPEG or PNG depending on masked value. OPTIONAL
 
 - QueryParams:
-    - **assets** (array[str]): asset names.
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band index (e.g `Asset1|1;2;3`).
+    - **assets** (array[str]): asset names.  **Required**
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
+    - **tilesize** (int): overwrite TMS tileWidth x tileHeight with fixed tilesize.
     - **nodata**: Overwrite internal Nodata value. OPTIONAL
     - **unscale** (bool): Apply dataset internal Scale/Offset.
     - **resampling** (str): RasterIO resampling algorithm. Defaults to `nearest`.
@@ -59,9 +59,6 @@
     - **limit** (int): The maximum number of results to return (page size). Defaults to 10.
     - **max_items** (int): The maximum number of items to used in a mosaic. Defaults to 100.
 
-!!! important
-    **assets** OR **expression** is required
-
 Example:
 
 - `https://myendpoint/collections/my-collection/tiles/WebMercatorQuad/1/2/3?assets=B01`
@@ -78,13 +75,13 @@ Example:
     - **TileMatrixSetId**: TileMatrixSet name (e.g `WebMercatorQuad`).
 
 - QueryParams:
+    - **assets** (array[str]): asset names.  **Required**
     - **tile_format**: Output image format, default is set to None and will be either JPEG or PNG depending on masked value.
-    - **tile_scale**: Tile size scale, default is set to 1 (256x256). OPTIONAL
+    - **tilesize** (int): overwrite TMS tileWidth x tileHeight with fixed tilesize. Defaults to 512.
     - **minzoom**: Overwrite default minzoom. OPTIONAL
     - **maxzoom**: Overwrite default maxzoom. OPTIONAL
-    - **expression** (str): rio-tiler's math expression with asset names (e.g `Asset1_b1/Asset2_b1`).
-    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset, so expression `Asset1/Asset2` can be passed.
-    - **asset_bidx** (array[str]): Per asset band index (e.g `Asset1|1;2;3`).
+    - **expression** (str): rio-tiler's math expression with asset names (e.g `b1/b2`).
+    - **asset_as_band** (bool): tell rio-tiler that each asset is a 1 band dataset.
     - **nodata** (str, int, float): Overwrite internal Nodata value.
     - **unscale** (bool): Apply dataset internal Scale/Offset.
     - **resampling** (str): RasterIO resampling algorithm. Defaults to `nearest`.
