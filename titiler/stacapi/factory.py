@@ -38,7 +38,7 @@ from urllib3 import Retry
 from titiler.core.algorithm import BaseAlgorithm
 from titiler.core.algorithm import algorithms as available_algorithms
 from titiler.core.dependencies import (
-    AssetsBidxExprParams,
+    AssetsExprParams,
     ColorMapParams,
     DatasetParams,
     DefaultDependency,
@@ -321,8 +321,8 @@ class OGCEndpointsFactory(BaseFactory):
 
     # Because the endpoints should work with STAC Items,
     # the `layer_dependency` define which query parameters are mandatory/optional to `display` images
-    # Defaults to `titiler.core.dependencies.AssetsBidxExprParams`, `assets=` or `expression=` is required
-    layer_dependency: Type[DefaultDependency] = AssetsBidxExprParams
+    # Defaults to `titiler.core.dependencies.AssetsExprParams`, `assets=` is required
+    layer_dependency: Type[DefaultDependency] = AssetsExprParams
 
     # Rasterio Dataset Options (nodata, unscale, resampling, reproject)
     dataset_dependency: Type[DefaultDependency] = DatasetParams

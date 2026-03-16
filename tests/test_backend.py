@@ -53,3 +53,32 @@ def test_stac_backend(get_assets, rio):
         assert isinstance(get_assets.call_args.args[0], Polygon)
         assert get_assets.call_args.kwargs["limit"] == 10
         assert img.metadata["timings"]
+        assert img.count == 3
+
+        img, assets = stac.tile(
+            8589,
+            12849,
+            15,
+            search_options={"limit": 10},
+            assets=[{"name": "cog"}],
+        )
+        assert img.count == 3
+
+        img, assets = stac.tile(
+            8589,
+            12849,
+            15,
+            search_options={"limit": 10},
+            assets=[{"name": "cog", "indexes": [1]}],
+        )
+        assert img.count == 1
+
+        img, assets = stac.tile(
+            8589,
+            12849,
+            15,
+            search_options={"limit": 10},
+            assets=[{"name": "cog", "bands": ["red", "blue"]}],
+        )
+        assert img.count == 2
+        assert img.band_descriptions == ["cog_b1", "cog_b3"]

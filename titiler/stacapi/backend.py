@@ -2,9 +2,10 @@
 
 import json
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 
 import attr
+import pystac
 from cachetools import TTLCache, cached
 from cachetools.keys import hashkey
 from geojson_pydantic import Point, Polygon
@@ -21,7 +22,7 @@ from rio_tiler.utils import CRS_to_uri
 from urllib3 import Retry
 
 from titiler.stacapi.dependencies import APIParams, Search
-from titiler.stacapi.reader import SimpleSTACReader
+from titiler.stacapi.reader import Item, SimpleSTACReader
 from titiler.stacapi.settings import CacheSettings, RetrySettings
 
 cache_config = CacheSettings()
@@ -71,7 +72,7 @@ class STACAPIBackend(BaseBackend):
         """Get asset name."""
         return f"{asset['collection']}/{asset['id']}"
 
-    def assets_for_tile(self, x: int, y: int, z: int, **kwargs: Any) -> list[dict]:
+    def assets_for_tile(self, x: int, y: int, z: int, **kwargs: Any) -> list[Item]:
         """Retrieve assets for tile."""
         bbox = self.tms.bounds(Tile(x, y, z))
         return self.get_assets(Polygon.from_bounds(*bbox), **kwargs)
@@ -82,7 +83,7 @@ class STACAPIBackend(BaseBackend):
         lat: float,
         coord_crs: CRS = WGS84_CRS,
         **kwargs: Any,
-    ) -> list[dict]:
+    ) -> list[Item]:
         """Retrieve assets for point."""
         if coord_crs != WGS84_CRS:
             xs, ys = transform(coord_crs, WGS84_CRS, [lng], [lat])
@@ -98,7 +99,7 @@ class STACAPIBackend(BaseBackend):
         ymax: float,
         coord_crs: CRS = WGS84_CRS,
         **kwargs: Any,
-    ) -> list[dict]:
+    ) -> list[Item]:
         """Retrieve assets for bbox."""
         if coord_crs != WGS84_CRS:
             xmin, ymin, xmax, ymax = transform_bounds(
@@ -130,7 +131,7 @@ class STACAPIBackend(BaseBackend):
         limit: int | None = None,
         max_items: int | None = None,
         fields: list[str] | None = None,
-    ) -> list[dict]:
+    ) -> list[Item]:
         """Find assets."""
 
         search_query = {
@@ -160,17 +161,43 @@ class STACAPIBackend(BaseBackend):
         results = ItemSearch(
             f"{self.api_params['url']}/search", stac_io=stac_api_io, **params
         )
-        return list(results.items_as_dicts())
+        return [cast(Item, itm) for itm in results.items_as_dicts()]
 
     @cached(  # type: ignore
         ttl_cache,
-        key=lambda self: hashkey(
+        key=lambda self, collection_id: hashkey(
+            collection_id,
             self.api_params["url"],
             json.dumps(self.input),
             json.dumps(self.api_params.get("headers", {})),
         ),
         lock=Lock(),
     )
+    def _get_collection(self, collection_id) -> pystac.Collection:
+        stac_api_io = StacApiIO(
+            max_retries=Retry(
+                total=retry_config.retry,
+                backoff_factor=retry_config.retry_factor,
+            ),
+            headers=self.api_params.get("headers", {}),
+        )
+        client = Client.open(f"{self.api_params['url']}", stac_io=stac_api_io)
+        return client.get_collection(collection_id)
+
+    def get_geographic_bounds(self, crs: CRS) -> BBox:
+        """Override method to fetch bounds from collection metadata."""
+        if not self.input.get("bbox") and (
+            collections := self.input.get("collections", [])
+        ):
+            if len(collections) == 1:
+                collection = self._get_collection(collections[0])
+                if collection.extent.spatial:
+                    if collection.extent.spatial.bboxes[0]:
+                        self.bounds = list(collection.extent.spatial.bboxes[0])
+                        self.crs = WGS84_CRS
+
+        return super().get_geographic_bounds(crs)
+
     def info(self) -> MosaicInfo:  # type: ignore
         """Mosaic info."""
         renders = {}
@@ -179,20 +206,14 @@ class STACAPIBackend(BaseBackend):
 
         if collections := self.input.get("collections", []):
             if len(collections) == 1:
-                stac_api_io = StacApiIO(
-                    max_retries=Retry(
-                        total=retry_config.retry,
-                        backoff_factor=retry_config.retry_factor,
-                    ),
-                    headers=self.api_params.get("headers", {}),
-                )
-                client = Client.open(f"{self.api_params['url']}", stac_io=stac_api_io)
-                collection = client.get_collection(collections[0])
-                if collection.extent.spatial:
+                collection = self._get_collection(collections[0])
+                if not self.input.get("bbox") and collection.extent.spatial:
                     bounds = tuple(collection.extent.spatial.bboxes[0])
                     crs = WGS84_CRS
                 renders = collection.extra_fields.get("renders", {})
 
         return MosaicInfo(
-            bounds=bounds, crs=CRS_to_uri(crs) or crs.to_wkt(), renders=renders
+            bounds=bounds,
+            crs=CRS_to_uri(crs) or crs.to_wkt(),
+            renders=renders,
         )
