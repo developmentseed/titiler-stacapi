@@ -2,7 +2,6 @@
 
 import sys
 from typing import Any, Sequence, Type
-from urllib.parse import urlparse
 
 import attr
 import pystac
@@ -118,23 +117,6 @@ class SimpleSTACReader(MultiBaseReader):
                 "No valid asset found. Asset's media types not supported"
             )
 
-    def _parse_vrt_asset(self, asset: str) -> tuple[str, str | None]:
-        if asset.startswith("vrt://") and asset not in self.assets:
-            parsed = urlparse(asset)
-            if not parsed.netloc:
-                raise InvalidAssetName(
-                    f"'{asset}' is not valid, couldn't find valid asset"
-                )
-
-            if parsed.netloc not in self.assets:
-                raise InvalidAssetName(
-                    f"'{parsed.netloc}' is not valid, should be one of {self.assets}"
-                )
-
-            return parsed.netloc, parsed.query
-
-        return asset, None
-
     def _get_asset_info(self, asset: AssetType) -> AssetInfo:  # noqa: C901
         """Validate asset names and return asset's url.
 
@@ -145,16 +127,13 @@ class SimpleSTACReader(MultiBaseReader):
             str: STAC asset href.
 
         """
-        asset_name: str
-        if isinstance(asset, dict):
-            if not asset.get("name"):
-                raise ValueError("asset dictionary does not have `name` key")
-            asset_name = asset["name"]
-        else:
-            asset_name = asset
+        if isinstance(asset, str):
+            asset = {"name": asset}
 
-        asset_name, vrt_options = self._parse_vrt_asset(asset_name)
+        if not asset.get("name"):
+            raise ValueError("asset dictionary does not have `name` key")
 
+        asset_name = asset["name"]
         if asset_name not in self.assets:
             raise InvalidAssetName(
                 f"'{asset_name}' is not valid, should be one of {self.assets}"
@@ -200,8 +179,6 @@ class SimpleSTACReader(MultiBaseReader):
 
                     method_options["indexes"] = band_indexes
 
-        asset_modified = "expression" in method_options or vrt_options
-
         info = AssetInfo(
             url=asset_info["href"],
             name=asset_name,
@@ -217,7 +194,9 @@ class SimpleSTACReader(MultiBaseReader):
         if header_size := asset_info.get("file:header_size"):
             info["env"]["GDAL_INGESTED_BYTES_AT_OPEN"] = header_size
 
-        if (bands := asset_info.get("raster:bands")) and not asset_modified:
+        if (
+            bands := asset_info.get("raster:bands")
+        ) and "expression" not in method_options:
             stats = [
                 (b["statistics"]["minimum"], b["statistics"]["maximum"])
                 for b in bands
@@ -225,9 +204,5 @@ class SimpleSTACReader(MultiBaseReader):
             ]
             if len(stats) == len(bands):
                 info["dataset_statistics"] = stats
-
-        if vrt_options:
-            # Construct VRT url
-            info["url"] = f"vrt://{info['url']}?{vrt_options}"
 
         return info

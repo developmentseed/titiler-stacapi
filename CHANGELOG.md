@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-03-16
+
+* change: titiler-* requirements to >=2.0,<2.1
+* change: asset notation to `assets={name}|{options=...}` 
+* remove `vrt:` asset notation
+
 ## [1.1.3] - 2026-03-05
 
 * fix: better handling of custom TMS ids in WMTS endpoints
@@ -76,7 +82,9 @@
 
 * initial release
 
-[Unreleased]: <https://github.com/developmentseed/titiler-stacapi/compare/1.1.2..main>
+[Unreleased]: <https://github.com/developmentseed/titiler-stacapi/compare/2.0.0..main>
+[2.0.0]: <https://github.com/developmentseed/titiler-stacapi/compare/1.1.3..2.0.0>
+[1.1.3]: <https://github.com/developmentseed/titiler-stacapi/compare/1.1.2..1.1.3>
 [1.1.2]: <https://github.com/developmentseed/titiler-stacapi/compare/1.1.1..1.1.2>
 [1.1.1]: <https://github.com/developmentseed/titiler-stacapi/compare/1.1.0..1.1.1>
 [1.1.0]: <https://github.com/developmentseed/titiler-stacapi/compare/1.0.0..1.1.0>
