@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-04-07
+
+* add: env settings to configure MaxItems and ItemsPerPage options for STAC API Backend
+    - `TITILER_STACAPI_ITEMS_PER_PAGE`: set number of items `per-page` returned for Search request (defaults to 10)
+    - `TITILER_STACAPI_MAX_ITEMS`: set max items returned by a Search request (defaults to 100)
+
 ## [2.0.0] - 2026-03-16
 
 * change: titiler-* requirements to >=2.0,<2.1

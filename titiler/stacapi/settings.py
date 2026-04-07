@@ -83,3 +83,16 @@ class STACAPISettings(BaseSettings):
         "env_file": ".env",
         "extra": "ignore",
     }
+
+
+class ItemsSettings(BaseSettings):
+    """STAC API Items settings"""
+
+    max_items: int = 100
+    items_per_page: int = 10
+
+    model_config = {
+        "env_prefix": "TITILER_STACAPI_",
+        "env_file": ".env",
+        "extra": "ignore",
+    }

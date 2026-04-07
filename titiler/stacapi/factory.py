@@ -191,9 +191,9 @@ def get_layer_from_collections(  # noqa: C901
                     layer["bbox"] = tuple(spatial_extent.bboxes[0])
 
                 if supported_tms:
-                    tilematrixsets: dict[str, tuple[int, int] | None] = {
-                        tms_id: None for tms_id in supported_tms.list()
-                    }
+                    tilematrixsets: dict[str, tuple[int, int] | None] = dict.fromkeys(
+                        supported_tms.list()
+                    )
                     for tms_id, zooms in tilematrixsets.items():
                         if zooms := render_tilematrixsets.get(tms_id):
                             tilematrixsets[tms_id] = zooms

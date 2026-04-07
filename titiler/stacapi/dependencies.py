@@ -15,12 +15,13 @@ from typing_extensions import Annotated
 from urllib3 import Retry
 
 from titiler.core.dependencies import DefaultDependency
-from titiler.stacapi.settings import CacheSettings, RetrySettings
+from titiler.stacapi.settings import CacheSettings, ItemsSettings, RetrySettings
 
 ResponseType = Literal["json", "html"]
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
+items_config = ItemsSettings()
 
 
 class APIParams(TypedDict):
@@ -286,12 +287,16 @@ class STACAPIExtensionParams(DefaultDependency):
     ] = None
     limit: Annotated[
         int | None,
-        Query(description="Limit the number of items per page search (default: 10)"),
-    ] = 10
+        Query(
+            description=f"Limit the number of items per page search (default: {items_config.items_per_page})"
+        ),
+    ] = None
     max_items: Annotated[
         int | None,
-        Query(description="Limit the number of total items (default: 100)"),
-    ] = 100
+        Query(
+            description=f"Limit the number of total items (default: {items_config.max_items})"
+        ),
+    ] = None
 
     def __post_init__(self):
         """Post Init."""
