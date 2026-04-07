@@ -1580,7 +1580,7 @@ wheels = [
 
 [[package]]
 name = "mkdocs-jupyter"
-version = "0.25.1"
+version = "0.26.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipykernel" },
@@ -1590,9 +1590,9 @@ dependencies = [
     { name = "nbconvert" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/23/6ffb8d2fd2117aa860a04c6fe2510b21bc3c3c085907ffdd851caba53152/mkdocs_jupyter-0.25.1.tar.gz", hash = "sha256:0e9272ff4947e0ec683c92423a4bfb42a26477c103ab1a6ab8277e2dcc8f7afe", size = 1626747, upload-time = "2024-10-15T14:56:32.373Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/d8/c146ea8cc36c3e812dd4c154513aa308614f35d2b4becec4b449165088f5/mkdocs_jupyter-0.26.1.tar.gz", hash = "sha256:7c80c0d3953de91e5b40a0d3209233795c8f800243ab298e4ec38e0504eda630", size = 1628270, upload-time = "2026-03-24T15:32:47.944Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/37/5f1fd5c3f6954b3256f8126275e62af493b96fb6aef6c0dbc4ee326032ad/mkdocs_jupyter-0.25.1-py3-none-any.whl", hash = "sha256:3f679a857609885d322880e72533ef5255561bbfdb13cfee2a1e92ef4d4ad8d8", size = 1456197, upload-time = "2024-10-15T14:56:29.854Z" },
+    { url = "https://files.pythonhosted.org/packages/93/89/eb601278b12c471235860992f5973cf3c55ca3f77d1d6127389eb045a021/mkdocs_jupyter-0.26.1-py3-none-any.whl", hash = "sha256:527242c2c8f1d30970764bbab752de41243e5703f458d8bc05336ec53828192e", size = 1459618, upload-time = "2026-03-24T15:32:46.25Z" },
 ]
 
 [[package]]
@@ -2533,16 +2533,16 @@ wheels = [
 
 [[package]]
 name = "pytest-cov"
-version = "7.0.0"
+version = "7.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "coverage", extra = ["toml"] },
     { name = "pluggy" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5e/f7/c933acc76f5208b3b00089573cf6a2bc26dc80a8aece8f52bb7d6b1855ca/pytest_cov-7.0.0.tar.gz", hash = "sha256:33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1", size = 54328, upload-time = "2025-09-09T10:57:02.113Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/51/a849f96e117386044471c8ec2bd6cfebacda285da9525c9106aeb28da671/pytest_cov-7.1.0.tar.gz", hash = "sha256:30674f2b5f6351aa09702a9c8c364f6a01c27aae0c1366ae8016160d1efc56b2", size = 55592, upload-time = "2026-03-21T20:11:16.284Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/49/1377b49de7d0c1ce41292161ea0f721913fa8722c19fb9c1e3aa0367eecb/pytest_cov-7.0.0-py3-none-any.whl", hash = "sha256:3b8e9558b16cc1479da72058bdecf8073661c7f57f7d3c5f22a1c23507f2d861", size = 22424, upload-time = "2025-09-09T10:57:00.695Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/7a/d968e294073affff457b041c2be9868a40c1c71f4a35fcc1e45e5493067b/pytest_cov-7.1.0-py3-none-any.whl", hash = "sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678", size = 22876, upload-time = "2026-03-21T20:11:14.438Z" },
 ]
 
 [[package]]
@@ -3156,7 +3156,7 @@ wheels = [
 
 [[package]]
 name = "titiler-core"
-version = "2.0.0"
+version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
@@ -3170,34 +3170,34 @@ dependencies = [
     { name = "rio-tiler" },
     { name = "simplejson" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/11/71199db3ba3ae393afbdf7ea66b315071583cee87d4fc7febd37d77cc6c1/titiler_core-2.0.0.tar.gz", hash = "sha256:6ff39c302d650363f15481a635efabb77616bfc343bb4be912adaff3975e630e", size = 68620, upload-time = "2026-03-16T10:23:06.346Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/62/9b/ae47d292f8a7a21cef9716fa5e33fcba4048e26aa11abfe9228bb2c97c9e/titiler_core-2.0.1.tar.gz", hash = "sha256:590343a8da15f56950870d1ebb637924280530de3640877ebc46ab507e04a930", size = 69016, upload-time = "2026-03-31T13:45:15.064Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/1a/13effb912f0954670fa33c7641df64b7ac2374a5f69e0844089193387d51/titiler_core-2.0.0-py3-none-any.whl", hash = "sha256:94aaa0bf9d6478aa5829d8f9155c9c2d2305e6625b795389f3f0dc8e0789bf22", size = 87055, upload-time = "2026-03-16T10:23:05.153Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/32/68b4c9f81e8b1cf0dc57d03a4159d0118decda94af41fdf5a98a2b2ced25/titiler_core-2.0.1-py3-none-any.whl", hash = "sha256:f435cf653a3f9acaeaeb60d1e8cda1474ccd79d4364c9e1e8da91dd08c96a449", size = 87427, upload-time = "2026-03-31T13:45:08.265Z" },
 ]
 
 [[package]]
 name = "titiler-extensions"
-version = "2.0.0"
+version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "titiler-core" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b6/0c/c286f07813cf67a730f6891c85462d406f4e7484e7ab37eef4b0b32be26a/titiler_extensions-2.0.0.tar.gz", hash = "sha256:7ca8ccb63f5b05ee0a26dc88199df6c2932c2b7ec9a2abacde9515492a9a5295", size = 31645, upload-time = "2026-03-16T10:23:15.773Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/91/2ae6d9cbbe8472dfdcb1a13b814127b55caa13535095bdf858496f347f42/titiler_extensions-2.0.1.tar.gz", hash = "sha256:74a5837c43d69b33748a648bea16a4576c392d77c233eeb841f095b4d58d20a9", size = 31932, upload-time = "2026-03-31T13:45:16.04Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/57/9befd0b24ac858e5762d9772ef29d19acd8fcf0ee4b5761fab29ec3daf1a/titiler_extensions-2.0.0-py3-none-any.whl", hash = "sha256:102c52a07e30ebe4fa619e1977022e2af6bcf6f092b2ea185683249c81d18ee5", size = 38416, upload-time = "2026-03-16T10:23:14.718Z" },
+    { url = "https://files.pythonhosted.org/packages/68/e8/0c878b764d4ddb255e8e70eb00203eebc14890807e01f391c422dcc3ce80/titiler_extensions-2.0.1-py3-none-any.whl", hash = "sha256:a4bea58a41ba402f29e274ff7f521a50889ab4ae860639bb30250e81f6716116", size = 38628, upload-time = "2026-03-31T13:45:10.072Z" },
 ]
 
 [[package]]
 name = "titiler-mosaic"
-version = "2.0.0"
+version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "titiler-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9f/47/3e7873fb5c42678ff6b6f6ddc3ed5460741e4a301e53d7912df3d8fce0cc/titiler_mosaic-2.0.0.tar.gz", hash = "sha256:fd6a7ce7d24af30ee528840bb16345a3c2ea439968c8b94878f214779e9baaec", size = 14749, upload-time = "2026-03-16T10:23:11.094Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/96/b455a35f7795fd639f4761a97bf5d5435ef3b2d8aba9eeabc374925aa0c0/titiler_mosaic-2.0.1.tar.gz", hash = "sha256:369b1f7964606acfc6c6dbbc7051390244d3ae64effdfd849aff0d8560de2aba", size = 14932, upload-time = "2026-03-31T13:45:17.283Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/41/acb7dd9b7ed544c1a7d6aca915d47a9925e3df06ce49e1474e888c5a2b82/titiler_mosaic-2.0.0-py3-none-any.whl", hash = "sha256:7b5eb1bfc73343ced84d578babfb8cab7508f0b07859b3040d8f745b1f1579f6", size = 17481, upload-time = "2026-03-16T10:23:10.291Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/e4/f5b9f409da8e18e964d550c5d546f891a5982b53f7fb49d2adc1c8da935b/titiler_mosaic-2.0.1-py3-none-any.whl", hash = "sha256:35f8f1990169540892a1977734fad0010fbd7703de14f06071fc02009653f2e2", size = 17635, upload-time = "2026-03-31T13:45:11.581Z" },
 ]
 
 [[package]]
