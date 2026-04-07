@@ -23,10 +23,11 @@ from urllib3 import Retry
 
 from titiler.stacapi.dependencies import APIParams, Search
 from titiler.stacapi.reader import Item, SimpleSTACReader
-from titiler.stacapi.settings import CacheSettings, RetrySettings
+from titiler.stacapi.settings import CacheSettings, ItemsSettings, RetrySettings
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
+items_config = ItemsSettings()
 
 ttl_cache = TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl)  # type: ignore
 
@@ -138,8 +139,8 @@ class STACAPIBackend(BaseBackend):
             **self.input,
             "method": "GET" if self.input.get("filter") else "POST",
             "sortby": sortby,
-            "limit": limit or 10,
-            "max_items": max_items or 100,
+            "limit": limit or items_config.items_per_page,
+            "max_items": max_items or items_config.max_items,
         }
         fields = fields or ["assets", "id", "bbox", "collection"]
 
