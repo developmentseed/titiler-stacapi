@@ -15,3 +15,14 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  - package-ecosystem: uv
+    cooldown:
+      default-days: 7
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      all:
+        patterns:
+        - "*"
