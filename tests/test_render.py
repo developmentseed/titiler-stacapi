@@ -26,6 +26,7 @@ def test_render(client):
         ]
         client.open.return_value.get_collections.return_value = collections
 
+    get_layer_from_collections.cache_clear()
     collections_render = get_layer_from_collections(
         APIParams(url="https://something.stac"),
         None,
@@ -67,6 +68,7 @@ def test_old_render(client):
         ]
         client.open.return_value.get_collections.return_value = collections
 
+    get_layer_from_collections.cache_clear()
     collections_render = get_layer_from_collections(
         APIParams(url="https://something.stac"),
         None,
