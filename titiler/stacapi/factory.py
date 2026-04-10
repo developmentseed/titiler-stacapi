@@ -49,6 +49,7 @@ from titiler.core.factory import BaseFactory, img_endpoint_params
 from titiler.core.resources.enums import ImageType, OptionalHeader
 from titiler.core.resources.responses import GeoJSONResponse
 from titiler.core.utils import render_image, tms_limits
+from titiler.extensions.render import _adapt_render_for_v2
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
 from titiler.stacapi.dependencies import (
@@ -164,6 +165,9 @@ def get_layer_from_collections(  # noqa: C901
 
         if "renders" in collection.extra_fields:
             for name, render in collection.extra_fields["renders"].items():
+                # Update Render parameters to be compatible with titiler v2.0.0+ and remove deprecated parameters
+                _adapt_render_for_v2(render)
+
                 render_tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
                     "tilematrixsets", {}
                 )

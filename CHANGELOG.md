@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-04-10
+
+* fix: update render configuration (to titiler 2.0 format) when fetching render metadata from collections in `OGCEndpointsFactory`
+
 ## [2.0.1] - 2026-04-07
 
 * add: env settings to configure MaxItems and ItemsPerPage options for STAC API Backend
@@ -88,7 +92,8 @@
 
 * initial release
 
-[Unreleased]: <https://github.com/developmentseed/titiler-stacapi/compare/2.0.1..main>
+[Unreleased]: <https://github.com/developmentseed/titiler-stacapi/compare/2.0.2..main>
+[2.0.2]: <https://github.com/developmentseed/titiler-stacapi/compare/2.0.1..2.0.2>
 [2.0.1]: <https://github.com/developmentseed/titiler-stacapi/compare/2.0.0..2.0.1>
 [2.0.0]: <https://github.com/developmentseed/titiler-stacapi/compare/1.1.3..2.0.0>
 [1.1.3]: <https://github.com/developmentseed/titiler-stacapi/compare/1.1.2..1.1.3>
