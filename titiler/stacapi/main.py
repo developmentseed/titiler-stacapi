@@ -106,7 +106,11 @@ if settings.cors_origins:
         allow_headers=["*"],
     )
 
-app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
+app.add_middleware(
+    CacheControlMiddleware,
+    cachecontrol=settings.cachecontrol,
+    exclude_path={r"/healthz"},
+)
 
 optional_headers = []
 if settings.debug:
@@ -162,10 +166,9 @@ collection = MosaicTilerFactory(
     layer_dependency=AssetsExprParams,
     router_prefix="/collections/{collection_id}",
     add_viewer=True,
+    get_renders=_get_renders_collection,
     extensions=[
-        wmtsExtensionMosaic(
-            get_renders=_get_renders_collection  # type: ignore [attr-defined]
-        ),
+        wmtsExtensionMosaic(),
     ],
     templates=templates,
 )
@@ -194,8 +197,9 @@ stac = MultiBaseTilerFactory(
     path_dependency=ItemIdParams,
     router_prefix="/collections/{collection_id}/items/{item_id}",
     add_viewer=True,
+    get_renders=_get_renders_item,
     extensions=[
-        wmtsExtension(get_renders=_get_renders_item),  # type: ignore [attr-defined]
+        wmtsExtension(),
     ],
     templates=templates,
 )
