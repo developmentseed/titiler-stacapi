@@ -14,6 +14,8 @@ RUN apt update && apt upgrade -y \
 # ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 RUN update-ca-certificates
 
+WORKDIR /tmp
+
 RUN python -m pip install -U pip
 RUN python -m pip install uvicorn uvicorn-worker gunicorn
 
@@ -24,6 +26,11 @@ COPY LICENSE LICENSE
 
 RUN python -m pip install --no-cache-dir --upgrade .
 RUN rm -rf titiler/ pyproject.toml README.md LICENSE
+
+RUN groupadd -g 1000 user && \
+    useradd -u 1000 -g user -s /bin/bash -m user
+
+USER user
 
 ###################################################
 # For compatibility (might be removed at one point)

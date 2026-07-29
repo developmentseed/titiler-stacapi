@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+* chore: add benchmark
+* fix: add `user` in docker image
+
 ## [2.0.2] - 2026-04-10
 
 * fix: update render configuration (to titiler 2.0 format) when fetching render metadata from collections in `OGCEndpointsFactory`

@@ -42,6 +42,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
+    "pytest-benchmark",
     "httpx",
     "owslib",
 ]
