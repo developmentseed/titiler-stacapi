@@ -6,6 +6,7 @@
 * fix: add `user` in docker image
 * fix: httpx2 dependency
 * fix: set upper limit for fastapi to avoid breaking change in openapi tools 
+* change: refactor Dockerfile to use uv lock file 
 
 ## [2.0.2] - 2026-04-10
 
