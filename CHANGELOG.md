@@ -4,6 +4,7 @@
 
 * chore: add benchmark
 * fix: add `user` in docker image
+* fix: httpx2 dependency
 
 ## [2.0.2] - 2026-04-10
 

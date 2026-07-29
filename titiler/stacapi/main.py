@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any, Literal
 
-import httpx
+import httpx2 as httpx
 import jinja2
 import morecantile
 import rasterio

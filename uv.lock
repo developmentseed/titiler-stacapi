@@ -3270,6 +3270,7 @@ wheels = [
 name = "titiler-stacapi"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx2" },
     { name = "orjson" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -3308,6 +3309,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx2" },
     { name = "orjson" },
     { name = "pydantic", specifier = ">=2.4,<3.0" },
     { name = "pydantic-settings", specifier = "~=2.0" },
