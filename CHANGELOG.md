@@ -5,6 +5,7 @@
 * chore: add benchmark
 * fix: add `user` in docker image
 * fix: httpx2 dependency
+* fix: set upper limit for fastapi to avoid breaking change in openapi tools 
 
 ## [2.0.2] - 2026-04-10
 

@@ -27,6 +27,7 @@ dependencies = [
     "titiler-core>=2.0,<2.1",
     "titiler-mosaic>=2.0,<2.1",
     "titiler-extensions>=2.0,<2.1",
+    "fastapi>=0.136.1,<0.140.3",
     "httpx2",
     "pystac-client",
     "pydantic>=2.4,<3.0",
