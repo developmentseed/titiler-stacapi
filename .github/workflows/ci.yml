@@ -90,26 +90,25 @@ jobs:
         run: |
           echo "version=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
 
-      # Push `latest` when comiting to main
-      - name: Build and push latest
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
-          platforms: linux/amd64
-          context: .
-          file: Dockerfile
-          push: true
+          images: ghcr.io/${{ github.repository }}
+          flavor: |
+            latest=false
           tags: |
-            ghcr.io/developmentseed/titiler-stacapi:latest
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      # Push `{VERSION}` when pushing a new tag
-      - name: Build and push tag
-        if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      - name: Build and push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           context: .
           file: Dockerfile
-          push: true
-          tags: |
-            ghcr.io/developmentseed/titiler-stacapi:${{ steps.tag.outputs.version }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
