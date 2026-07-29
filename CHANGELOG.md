@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-29
+
+* feat: update titiler-* requirements to >=2.2,<2.3
+
 ## [2.0.3] - 2026-07-29
 
 * chore: add benchmark
