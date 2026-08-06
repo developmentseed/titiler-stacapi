@@ -21,7 +21,7 @@ tiles = [
 
 @pytest.mark.parametrize("tile", tiles)
 def test_benchmark_tile(benchmark, tile):
-    """Benchmark items endpoint."""
+    """Benchmark /collections tile's endpoint (search+mosaic)."""
 
     benchmark.name = f"zoom{tile['zoom']}-{tile['assets']}assets"
     benchmark.group = f"Zoom {tile['zoom']} - {tile['assets']} Assets"
@@ -30,6 +30,27 @@ def test_benchmark_tile(benchmark, tile):
         t = input_tile["tile"]
         response = httpx.get(
             f"http://{host}:{port}/collections/world/tiles/WebMercatorQuad/{t}?assets=asset"
+        )
+        assert response.status_code == 200
+        return response
+
+    _ = httpx.get(f"http://{host}:{port}/collections/world/info")
+
+    response = benchmark(f, tile)
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("tile", tiles)
+def test_benchmark_search(benchmark, tile):
+    """Benchmark assets endpoint (simple search)."""
+
+    benchmark.name = f"zoom{tile['zoom']}"
+    benchmark.group = f"Zoom {tile['zoom']}"
+
+    def f(input_tile: dict):
+        t = input_tile["tile"]
+        response = httpx.get(
+            f"http://{host}:{port}/collections/world/tiles/WebMercatorQuad/{t}/assets"
         )
         assert response.status_code == 200
         return response
