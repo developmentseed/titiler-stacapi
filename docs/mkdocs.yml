@@ -28,6 +28,7 @@ nav:
   - Technical Considerations: technical-considerations.md
   - Development - Contributing: contributing.md
   - Release notes: release-notes.md
+  - Performance Benchmarks: benchmark.html
 
 plugins:
   - search
