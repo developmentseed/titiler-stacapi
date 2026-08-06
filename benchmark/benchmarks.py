@@ -23,6 +23,7 @@ tiles = [
 def test_benchmark_tile(benchmark, tile):
     """Benchmark /collections tile's endpoint (search+mosaic)."""
 
+    benchmark.fullname = f"Mosaic-Z{tile['zoom']}"
     benchmark.name = f"zoom{tile['zoom']}-{tile['assets']}assets"
     benchmark.group = f"Zoom {tile['zoom']} - {tile['assets']} Assets"
 
@@ -42,6 +43,7 @@ def test_benchmark_tile(benchmark, tile):
 def test_benchmark_search(benchmark, tile):
     """Benchmark assets endpoint (simple search)."""
 
+    benchmark.fullname = f"Search-Z{tile['zoom']}"
     benchmark.name = f"zoom{tile['zoom']}"
     benchmark.group = f"Zoom {tile['zoom']}"
 
