@@ -46,6 +46,7 @@ jobs:
       - name: Launch services
         run: docker compose up -d api
         env:
+          DISABLE_CACHE: TRUE
           PGSTAC_VERSION: ${{ env.PGSTAC_VERSION }}
 
       - name: Ingest Stac Items/Collection

@@ -34,8 +34,6 @@ def test_benchmark_tile(benchmark, tile):
         assert response.status_code == 200
         return response
 
-    _ = httpx.get(f"http://{host}:{port}/collections/world/info")
-
     response = benchmark(f, tile)
     assert response.status_code == 200
 
@@ -54,8 +52,6 @@ def test_benchmark_search(benchmark, tile):
         )
         assert response.status_code == 200
         return response
-
-    _ = httpx.get(f"http://{host}:{port}/collections/world/info")
 
     response = benchmark(f, tile)
     assert response.status_code == 200

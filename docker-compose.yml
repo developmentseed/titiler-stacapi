@@ -34,6 +34,7 @@ services:
       # TiTiler STAC API Config
       - TITILER_STACAPI_API_DEBUG=TRUE
       - TITILER_STACAPI_STAC_API_URL=http://stac-api:8082
+      - TITILER_STACAPI_CACHE_DISABLE=${DISABLE_CACHE:-FALSE}
     command: ["uvicorn", "titiler.stacapi.main:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "1"]
     depends_on:
       - stac-api
