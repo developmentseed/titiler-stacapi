@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync
-          uv pip install psycopg[binary] pypgstac==${{ env.PGSTAC_VERSION }}
+          uv pip install psycopg[pool,binary] pypgstac==${{ env.PGSTAC_VERSION }}
 
       - name: Launch services
         run: docker compose up -d api
