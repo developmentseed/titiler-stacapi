@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
+from threading import Lock
 from typing import Any, Literal, NotRequired, TypedDict
 
 import pystac
@@ -23,6 +24,8 @@ cache_config = CacheSettings()
 retry_config = RetrySettings()
 items_config = ItemsSettings()
 
+ttl_cache: TTLCache = TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl)
+
 
 class APIParams(TypedDict):
     """STAC API Parameters."""
@@ -43,10 +46,11 @@ class Search(TypedDict, total=False):
 
 
 @cached(  # type: ignore
-    TTLCache(maxsize=cache_config.maxsize, ttl=cache_config.ttl),
+    ttl_cache,
     key=lambda url, collection_id, item_id, headers, **kwargs: hashkey(
         url, collection_id, item_id, json.dumps(headers)
     ),
+    lock=Lock(),
 )
 def get_stac_item(
     url: str,
