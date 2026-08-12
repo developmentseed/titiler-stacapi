@@ -24,7 +24,7 @@ def test_render(client):
         collections = [
             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
         ]
-        client.open.return_value.get_collections.return_value = collections
+        client.return_value.get_collections.return_value = collections
 
     get_layer_from_collections.cache_clear()
     collections_render = get_layer_from_collections(
@@ -66,7 +66,7 @@ def test_old_render(client):
         collections = [
             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
         ]
-        client.open.return_value.get_collections.return_value = collections
+        client.return_value.get_collections.return_value = collections
 
     get_layer_from_collections.cache_clear()
     collections_render = get_layer_from_collections(

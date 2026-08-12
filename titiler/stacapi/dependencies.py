@@ -9,14 +9,13 @@ import pystac
 from cachetools import TTLCache, cached
 from cachetools.keys import hashkey
 from fastapi import HTTPException, Path, Query
-from pystac_client import ItemSearch
-from pystac_client.stac_api_io import StacApiIO
 from starlette.requests import Request
 from typing_extensions import Annotated
-from urllib3 import Retry
 
 from titiler.core.dependencies import DefaultDependency
-from titiler.stacapi.settings import CacheSettings, ItemsSettings, RetrySettings
+
+from .client import Client
+from .settings import CacheSettings, ItemsSettings, RetrySettings
 
 ResponseType = Literal["json", "html"]
 
@@ -59,24 +58,19 @@ def get_stac_item(
     headers: dict | None = None,
 ) -> pystac.Item:
     """Get STAC Item from STAC API."""
-    stac_api_io = StacApiIO(
-        max_retries=Retry(
-            total=retry_config.retry,
-            backoff_factor=retry_config.retry_factor,
-        ),
-        headers=headers,
+    catalog = Client(
+        href=url,
+        headers=headers or {},
+        max_retries_per_request=retry_config.retry,
     )
-    results = ItemSearch(
-        f"{url}/search", stac_io=stac_api_io, collections=[collection_id], ids=[item_id]
-    )
-    items = list(results.items())
-    if not items:
+    item = catalog.get_item(collection_id, item_id)
+    if not item:
         raise HTTPException(
             404,
             f"Could not find Item {item_id} in {collection_id} collection.",
         )
 
-    return items[0]
+    return item
 
 
 def ItemIdParams(

@@ -28,7 +28,8 @@ dependencies = [
     "titiler-mosaic>=2.2,<2.3",
     "titiler-extensions>=2.2,<2.3",
     "httpx2",
-    "pystac-client",
+    "pystac>=1.15,<2.0",
+    "rustac>=0.9.16,<1.0",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
 ]
@@ -48,6 +49,9 @@ dev = [
     "pytest-benchmark",
     "httpx",
     "owslib",
+    "IPython",
+    "jupyter",
+    "folium",
 ]
 docs = [
     "black>=23.10.1",

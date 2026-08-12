@@ -19,7 +19,6 @@ from fastapi import Depends, HTTPException, Path
 from fastapi.dependencies.utils import get_dependant, request_params_to_args
 from morecantile import tms as morecantile_tms
 from morecantile.defaults import TileMatrixSets
-from pystac_client.stac_api_io import StacApiIO
 from rasterio.crs import CRS
 from rasterio.transform import xy as rowcol_to_coords
 from rasterio.warp import transform as transform_points
@@ -33,7 +32,6 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
 from typing_extensions import Annotated
-from urllib3 import Retry
 
 from titiler.core.algorithm import BaseAlgorithm
 from titiler.core.algorithm import algorithms as available_algorithms
@@ -52,6 +50,7 @@ from titiler.core.utils import render_image, tms_limits
 from titiler.extensions.render import _adapt_render_for_v2
 from titiler.mosaic.factory import PixelSelectionParams
 from titiler.stacapi.backend import STACAPIBackend
+from titiler.stacapi.client import Client
 from titiler.stacapi.dependencies import (
     APIParams,
     BackendParams,
@@ -60,7 +59,6 @@ from titiler.stacapi.dependencies import (
     STACAPIExtensionParams,
 )
 from titiler.stacapi.models import FeatureInfo, LayerDict
-from titiler.stacapi.pystac import Client
 from titiler.stacapi.reader import SimpleSTACReader
 from titiler.stacapi.settings import CacheSettings, RetrySettings
 
@@ -149,14 +147,11 @@ def get_layer_from_collections(  # noqa: C901
     supported_tms: TileMatrixSets | None = None,
 ) -> dict[str, LayerDict]:
     """Get Layers from STAC Collections."""
-    stac_api_io = StacApiIO(
-        max_retries=Retry(
-            total=retry_config.retry,
-            backoff_factor=retry_config.retry_factor,
-        ),
+    catalog = Client(
+        href=api_params["url"],
         headers=api_params.get("headers", {}),
+        max_retries_per_request=retry_config.retry,
     )
-    catalog = Client.open(api_params["url"], stac_io=stac_api_io)
 
     layers = {}
     for collection in catalog.get_collections():
