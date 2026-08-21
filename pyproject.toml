@@ -127,18 +127,3 @@ no_implicit_optional = true
 strict_optional = true
 namespace_packages = true
 explicit_package_bases = true
-
-[tool.bumpversion]
-current_version = "2.1.0"
-search = "{current_version}"
-replace = "{new_version}"
-regex = false
-tag = false
-commit = true
-allow_dirty = false
-tag_name = "{new_version}"
-
-[[tool.bumpversion.files]]
-filename = "titiler/stacapi/__init__.py"
-search = '__version__ = "{current_version}"'
-replace = '__version__ = "{new_version}"'
