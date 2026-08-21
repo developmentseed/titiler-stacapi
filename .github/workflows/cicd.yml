@@ -15,7 +15,7 @@ on:
       - 'titiler/**'
       - 'tests/**'
       - '.pre-commit-config.yaml'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/cicd.yml'
       - 'uv.lock'
 
   # Run tests on pull requests.
