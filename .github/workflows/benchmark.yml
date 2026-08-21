@@ -25,7 +25,8 @@ jobs:
   benchmark:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Push benchmark results to gh-benchmarks branch
+      pull-requests: write # Leave PR comments when benchmark regressions exceed alert threshold
     env:
       PGSTAC_VERSION: '0.9.11'
     steps:
