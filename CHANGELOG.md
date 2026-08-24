@@ -1,4 +1,13 @@
+## [2.1.1](https://github.com/developmentseed/titiler-stacapi/compare/2.1.0...2.1.1) (2026-08-24)
 
+
+### Bug Fixes
+
+* add `Lock` to TTL Cache ([a4951aa](https://github.com/developmentseed/titiler-stacapi/commit/a4951aa1d9a055f2e8b886958288354d46ee92d1))
+
+### Code Refactoring
+
+* use wolfi docker image ([#97](https://github.com/developmentseed/titiler-stacapi/pull/97))
 
 ## [Unreleased]
 
