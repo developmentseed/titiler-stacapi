@@ -25,7 +25,7 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "extra-files": [
-        { "type": "python", "path": "titiler/stacapi/__init__.py" }
+        { "type": "generic", "path": "titiler/stacapi/__init__.py" }
       ]
     }
   }
