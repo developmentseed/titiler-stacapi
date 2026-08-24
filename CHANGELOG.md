@@ -1,4 +1,22 @@
+## [2.1.1](https://github.com/developmentseed/titiler-stacapi/compare/2.1.0...2.1.1) (2026-08-24)
 
+
+### Bug Fixes
+
+* bench names ([2a51701](https://github.com/developmentseed/titiler-stacapi/commit/2a517015a965755b22aef0f2ea4b79042a9a2626))
+* cache ([a4951aa](https://github.com/developmentseed/titiler-stacapi/commit/a4951aa1d9a055f2e8b886958288354d46ee92d1))
+* changelog link ([7533d7f](https://github.com/developmentseed/titiler-stacapi/commit/7533d7f7e629d325531c46058eba676bf1a07551))
+* disable cache ([1bee9a0](https://github.com/developmentseed/titiler-stacapi/commit/1bee9a033f7db4aa0c4b0de9bc544962b50181f3))
+* fix dependabot limitation of parsing only FROM lines in docker image ([df6a4c7](https://github.com/developmentseed/titiler-stacapi/commit/df6a4c72f81924da2dd9a8304bb882db2181e72d))
+* fix dependabot limitation of parsing only FROM lines in docker images ([befc089](https://github.com/developmentseed/titiler-stacapi/commit/befc08909e466959c21a6b491d5f6aaae1e88675))
+* install psycopg ([97c0d91](https://github.com/developmentseed/titiler-stacapi/commit/97c0d91b7ea78be108ce117663d2fc1ad3127813))
+* install psycopg ([87ae97a](https://github.com/developmentseed/titiler-stacapi/commit/87ae97a52b39f83080bdeb6fd178717a7b9982a5))
+
+
+### Code Refactoring
+
+* use wolfi docker image ([a6d0ac9](https://github.com/developmentseed/titiler-stacapi/commit/a6d0ac94205d104bcf34a5662558da7ce3cf855a))
+* use wolfi docker image ([16d06ea](https://github.com/developmentseed/titiler-stacapi/commit/16d06eace6384f414187f5f7d5dc0697c9d4bd4e))
 
 ## [Unreleased]
 
