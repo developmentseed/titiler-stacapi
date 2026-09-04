@@ -34,7 +34,7 @@ def test_wms_getcapabilities(client, app):
         collections = [
             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
         ]
-        client.open.return_value.get_collections.return_value = collections
+        client.return_value.get_collections.return_value = collections
 
     # Missing Service
     response = app.get("/wms")
@@ -116,9 +116,9 @@ def test_wms_getcapabilities(client, app):
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
-@patch("titiler.stacapi.backend.ItemSearch")
+@patch("titiler.stacapi.backend.Client.search_as_dict")
 @patch("titiler.stacapi.factory.Client")
-def test_wms_getmap(client, item_search, rio, app):
+def test_wms_getmap(client, search_as_dict, rio, app):
     """test WMS GetMap endpoint."""
     rio.open = mock_rasterio_open
 
@@ -126,10 +126,10 @@ def test_wms_getmap(client, item_search, rio, app):
         collections = [
             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
         ]
-        client.open.return_value.get_collections.return_value = collections
+        client.return_value.get_collections.return_value = collections
 
     with open(item_json, "r") as f:
-        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
+        search_as_dict.return_value = [json.loads(f.read())]
 
     # missing parameters
     response = app.get(
@@ -318,7 +318,7 @@ def test_wms_getmap(client, item_search, rio, app):
     )
     assert response.status_code == 200
     assert (
-        item_search.call_args.kwargs.get("datetime")
+        search_as_dict.call_args.kwargs.get("datetime")
         == "2023-01-05T00:00:00Z/2023-01-05T23:59:59Z"
     )
     assert response.headers["content-type"] == "image/png"
@@ -333,9 +333,9 @@ def test_wms_getmap(client, item_search, rio, app):
 
 
 @patch("rio_tiler.io.rasterio.rasterio")
-@patch("titiler.stacapi.backend.ItemSearch")
+@patch("titiler.stacapi.backend.Client.search_as_dict")
 @patch("titiler.stacapi.factory.Client")
-def test_wms_getfeatureinfo(client, item_search, rio, app):
+def test_wms_getfeatureinfo(client, search_as_dict, rio, app):
     """test WMS GetFeatureInfo endpoint."""
     rio.open = mock_rasterio_open
 
@@ -343,10 +343,10 @@ def test_wms_getfeatureinfo(client, item_search, rio, app):
         collections = [
             pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
         ]
-        client.open.return_value.get_collections.return_value = collections
+        client.return_value.get_collections.return_value = collections
 
     with open(item_json, "r") as f:
-        item_search.return_value.items_as_dicts.return_value = [json.loads(f.read())]
+        search_as_dict.return_value = [json.loads(f.read())]
 
     # missing parameters
     response = app.get(

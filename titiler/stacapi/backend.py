@@ -2,7 +2,7 @@
 
 import json
 from threading import Lock
-from typing import Any, cast
+from typing import Any
 
 import attr
 import pystac
@@ -11,19 +11,17 @@ from cachetools.keys import hashkey
 from geojson_pydantic import Point, Polygon
 from geojson_pydantic.geometries import Geometry
 from morecantile import Tile, TileMatrixSet
-from pystac_client import Client, ItemSearch
-from pystac_client.stac_api_io import StacApiIO
 from rasterio.crs import CRS
 from rasterio.warp import transform, transform_bounds
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
 from rio_tiler.mosaic.backend import BaseBackend, MosaicInfo
 from rio_tiler.types import BBox
 from rio_tiler.utils import CRS_to_uri
-from urllib3 import Retry
 
-from titiler.stacapi.dependencies import APIParams, Search
-from titiler.stacapi.reader import Item, SimpleSTACReader
-from titiler.stacapi.settings import CacheSettings, ItemsSettings, RetrySettings
+from .client import Client, Item
+from .dependencies import APIParams, Search
+from .reader import SimpleSTACReader
+from .settings import CacheSettings, ItemsSettings, RetrySettings
 
 cache_config = CacheSettings()
 retry_config = RetrySettings()
@@ -144,14 +142,6 @@ class STACAPIBackend(BaseBackend):
         }
         fields = fields or ["assets", "id", "bbox", "collection"]
 
-        stac_api_io = StacApiIO(
-            max_retries=Retry(
-                total=retry_config.retry,
-                backoff_factor=retry_config.retry_factor,
-            ),
-            headers=self.api_params.get("headers", {}),
-        )
-
         params = {
             **search_query,
             "intersects": geom.model_dump_json(exclude_none=True),
@@ -159,10 +149,12 @@ class STACAPIBackend(BaseBackend):
         }
         params.pop("bbox", None)
 
-        results = ItemSearch(
-            f"{self.api_params['url']}/search", stac_io=stac_api_io, **params
+        catalog = Client(
+            href=self.api_params["url"],
+            headers=self.api_params.get("headers", {}),
+            max_retries_per_request=retry_config.retry,
         )
-        return [cast(Item, itm) for itm in results.items_as_dicts()]
+        return catalog.search_as_dict(**params)
 
     @cached(  # type: ignore
         ttl_cache,
@@ -175,15 +167,12 @@ class STACAPIBackend(BaseBackend):
         lock=Lock(),
     )
     def _get_collection(self, collection_id) -> pystac.Collection:
-        stac_api_io = StacApiIO(
-            max_retries=Retry(
-                total=retry_config.retry,
-                backoff_factor=retry_config.retry_factor,
-            ),
+        catalog = Client(
+            href=self.api_params["url"],
             headers=self.api_params.get("headers", {}),
+            max_retries_per_request=retry_config.retry,
         )
-        client = Client.open(f"{self.api_params['url']}", stac_io=stac_api_io)
-        return client.get_collection(collection_id)
+        return catalog.get_collection(collection_id)
 
     def get_geographic_bounds(self, crs: CRS) -> BBox:
         """Override method to fetch bounds from collection metadata."""
@@ -194,7 +183,7 @@ class STACAPIBackend(BaseBackend):
                 collection = self._get_collection(collections[0])
                 if collection.extent.spatial:
                     if collection.extent.spatial.bboxes[0]:
-                        self.bounds = list(collection.extent.spatial.bboxes[0])
+                        self.bounds = tuple(collection.extent.spatial.bboxes[0])
                         self.crs = WGS84_CRS
 
         return super().get_geographic_bounds(crs)

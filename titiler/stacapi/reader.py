@@ -1,6 +1,5 @@
 """Custom STAC reader."""
 
-import sys
 from typing import Any, Sequence, Type
 
 import attr
@@ -13,10 +12,7 @@ from rio_tiler.io import BaseReader, MultiBaseReader, Reader
 from rio_tiler.io.stac import DEFAULT_VALID_TYPE, STAC_ALTERNATE_KEY, STACReader
 from rio_tiler.types import AssetInfo, AssetType
 
-if sys.version_info >= (3, 15):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
+from .client import Item
 
 
 @attr.s
@@ -57,16 +53,6 @@ class STACAPIReader(STACReader):
         """set self.item from input."""
         self.item = self.input
         super().__attrs_post_init__()
-
-
-class Item(TypedDict, extra_items=True):  # type: ignore[call-arg]
-    """Simple STAC Item model."""
-
-    id: str
-    collection: str
-    bbox: tuple[float, float, float, float]
-    properties: dict | None
-    assets: dict[str, dict[str, Any]]
 
 
 @attr.s
