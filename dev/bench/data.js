@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788504503950,
+  "lastUpdate": 1789102308612,
   "repoUrl": "https://github.com/developmentseed/titiler-stacapi",
   "entries": {
     "TiTiler-STACapi Benchmarks": [
@@ -1340,6 +1340,128 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0005984921112479858",
             "extra": "mean: 10.422624999999707 msec\nrounds: 88"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "vincent.sarago@gmail.com",
+            "name": "Vincent Sarago",
+            "username": "vincentsarago"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2f43156dfc5855b071d7db77d5c3efb25231e75",
+          "message": "Merge pull request #108 from developmentseed/dependabot/uv/all-d9f65184a5\n\nchore(deps): bump pydantic from 2.13.4 to 2.13.5 in the all group",
+          "timestamp": "2026-09-11T06:50:11+02:00",
+          "tree_id": "e67f2352da681e3a38b57953583670eca0dea347",
+          "url": "https://github.com/developmentseed/titiler-stacapi/commit/c2f43156dfc5855b071d7db77d5c3efb25231e75"
+        },
+        "date": 1789102307620,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "Mosaic-Z0",
+            "value": 4.405038008139194,
+            "unit": "iter/sec",
+            "range": "stddev: 0.02158579214232601",
+            "extra": "mean: 227.01279720000116 msec\nrounds: 5"
+          },
+          {
+            "name": "Mosaic-Z1",
+            "value": 10.6540153475817,
+            "unit": "iter/sec",
+            "range": "stddev: 0.006302043651195882",
+            "extra": "mean: 93.8613252727278 msec\nrounds: 11"
+          },
+          {
+            "name": "Mosaic-Z2",
+            "value": 14.930827803993875,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0019075232143997997",
+            "extra": "mean: 66.97552293333047 msec\nrounds: 15"
+          },
+          {
+            "name": "Mosaic-Z3",
+            "value": 22.11992439466613,
+            "unit": "iter/sec",
+            "range": "stddev: 0.010702002830394906",
+            "extra": "mean: 45.20811111999706 msec\nrounds: 25"
+          },
+          {
+            "name": "Mosaic-Z4",
+            "value": 32.6820902938459,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0009959270538014743",
+            "extra": "mean: 30.597798090910413 msec\nrounds: 33"
+          },
+          {
+            "name": "Mosaic-Z5",
+            "value": 29.545245218254156,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0022771185660422004",
+            "extra": "mean: 33.84639364516638 msec\nrounds: 31"
+          },
+          {
+            "name": "Mosaic-Z6",
+            "value": 28.385107660303714,
+            "unit": "iter/sec",
+            "range": "stddev: 0.009819957528943643",
+            "extra": "mean: 35.22974131250134 msec\nrounds: 32"
+          },
+          {
+            "name": "Search-Z0",
+            "value": 37.61806692848154,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000990831795985509",
+            "extra": "mean: 26.582971472222994 msec\nrounds: 36"
+          },
+          {
+            "name": "Search-Z1",
+            "value": 67.52949535303993,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0046543185297184654",
+            "extra": "mean: 14.808344039475836 msec\nrounds: 76"
+          },
+          {
+            "name": "Search-Z2",
+            "value": 73.23003633780607,
+            "unit": "iter/sec",
+            "range": "stddev: 0.005157861262534577",
+            "extra": "mean: 13.655598849999961 msec\nrounds: 80"
+          },
+          {
+            "name": "Search-Z3",
+            "value": 85.24254762901218,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0008634650846187965",
+            "extra": "mean: 11.73123079746682 msec\nrounds: 79"
+          },
+          {
+            "name": "Search-Z4",
+            "value": 86.7746863052416,
+            "unit": "iter/sec",
+            "range": "stddev: 0.004607043827555829",
+            "extra": "mean: 11.524098127907555 msec\nrounds: 86"
+          },
+          {
+            "name": "Search-Z5",
+            "value": 94.66090375818005,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006446257038989209",
+            "extra": "mean: 10.564023374999584 msec\nrounds: 96"
+          },
+          {
+            "name": "Search-Z6",
+            "value": 94.06937811563834,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0008855152833869794",
+            "extra": "mean: 10.630451907215887 msec\nrounds: 97"
           }
         ]
       }
