@@ -1,5 +1,12 @@
 # Release Notes
 
+## [2.1.2](https://github.com/developmentseed/titiler-stacapi/compare/2.1.1...2.1.2) (2026-09-15)
+
+
+### Bug Fixes
+
+* binary path in docker file ([1726b1d](https://github.com/developmentseed/titiler-stacapi/commit/1726b1d4e37207ccdadacb8af0d0f4c44b782617))
+
 ## [2.1.1](https://github.com/developmentseed/titiler-stacapi/compare/2.1.0...2.1.1) (2026-08-24)
 
 ### Bug Fixes
