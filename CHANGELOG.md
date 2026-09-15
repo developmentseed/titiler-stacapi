@@ -1,5 +1,6 @@
-## [2.1.1](https://github.com/developmentseed/titiler-stacapi/compare/2.1.0...2.1.1) (2026-08-24)
+# Release Notes
 
+## [2.1.1](https://github.com/developmentseed/titiler-stacapi/compare/2.1.0...2.1.1) (2026-08-24)
 
 ### Bug Fixes
 
