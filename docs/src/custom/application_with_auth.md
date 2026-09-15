@@ -80,7 +80,9 @@ app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 
 webmerc = morecantile.tms.get("WebMercatorQuad").model_dump()
 webmerc["id"] = "EPSG3857"
-supported_tms = morecantile.TileMatrixSets({"EPSG3857": morecantile.TileMatrixSet.model_validate(webmerc)})
+supported_tms = morecantile.TileMatrixSets(
+    {"EPSG3857": morecantile.TileMatrixSet.model_validate(webmerc)}
+)
 
 ###############################################################################
 # OGC WMTS Endpoints
@@ -90,5 +92,4 @@ wmts = OGCEndpointsFactory(
 )
 
 app.include_router(wmts.router, tags=["Web Map Tile Service"])
-
 ```
