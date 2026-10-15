@@ -18,7 +18,7 @@ from rio_tiler.models import ImageData
 from starlette.datastructures import QueryParams
 
 from titiler.core.utils import tms_limits
-from titiler.stacapi.factory import OGCEndpointsFactory
+from titiler.stacapi.factory import OGCEndpointsFactory, get_layer_from_collections
 
 item_json = os.path.join(
     os.path.dirname(__file__), "fixtures", "46_033111301201_1040010082988200.json"
@@ -761,6 +761,8 @@ def test_zoom_limits_multiple_tms(client):
         ]
         client.open.return_value.get_collections.return_value = collections
 
+    get_layer_from_collections.cache_clear()
+
     app = FastAPI()
     app.state.stac_url = "http://something.stac"
     ogc_endpoints = OGCEndpointsFactory(
@@ -783,6 +785,7 @@ def test_zoom_limits_multiple_tms(client):
                 "request": "getcapabilities",
             },
         )
+        assert response.status_code == 200
         assert "TileMatrixSetLimits" not in response.text
 
         response = client.get(
