@@ -203,6 +203,7 @@ def get_layer_from_collections(  # noqa: C901
                             tilematrixsets[tms_id] = zooms
 
                     layer["tilematrixsets"] = {}
+                    layer["tilematrix_limits"] = {}
                     for tms_id, zooms in tilematrixsets.items():
                         try:
                             limits = tms_limits(
@@ -217,6 +218,8 @@ def get_layer_from_collections(  # noqa: C901
                             layer["tilematrixsets"][tms_id] = (
                                 limits if len(tilematrixsets) == 1 else None
                             )
+                            # Always kept, to enforce zoom limits for every TMS
+                            layer["tilematrix_limits"][tms_id] = limits
                         except Exception as e:  # noqa
                             pass
 
@@ -306,6 +309,9 @@ def get_layer_from_collections(  # noqa: C901
                 if tilematrixset := layer.get("tilematrixsets"):
                     layers[render_id]["tilematrixsets"] = tilematrixset
 
+                if tilematrix_limits := layer.get("tilematrix_limits"):
+                    layers[render_id]["tilematrix_limits"] = tilematrix_limits
+
     return cast(dict[str, LayerDict], layers)
 
 
@@ -368,6 +374,8 @@ class OGCEndpointsFactory(BaseFactory):
     supported_wmts_version: List[str] = field(factory=lambda: ["1.0.0"])
     supported_wms_version: List[str] = field(factory=lambda: ["1.3.0"])
 
+    block_outside_tms_zoom_range: bool = False
+
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
     def get_tile(  # noqa: C901
@@ -401,6 +409,15 @@ class OGCEndpointsFactory(BaseFactory):
         z = int(req["tilematrix"])
         x = int(req["tilecol"])
         y = int(req["tilerow"])
+
+        limits = layer.get("tilematrix_limits", {}).get(tms_id)
+        if self.block_outside_tms_zoom_range and limits:
+            allowed = [limit["tileMatrix"] for limit in limits]
+            if str(z) not in allowed:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid 'TILEMATRIX' parameter: {z} for layer {layer['id']}. Should be between {allowed[0]} and {allowed[-1]}.",
+                )
 
         ###########################################################
         # STAC Query parameter provided by the render extension and QueryParameters

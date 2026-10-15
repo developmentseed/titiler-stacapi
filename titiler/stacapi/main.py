@@ -135,6 +135,7 @@ ogc_endpoints = OGCEndpointsFactory(
     supported_tms=supported_tms,
     optional_headers=optional_headers,
     templates=templates,
+    block_outside_tms_zoom_range=settings.block_outside_tms_zoom_range,
 )
 app.include_router(
     ogc_endpoints.router,

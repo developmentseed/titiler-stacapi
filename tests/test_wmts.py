@@ -2,18 +2,23 @@
 
 import json
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs
 
 import morecantile
+import numpy
 import pystac
+import pytest
 import rasterio
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from morecantile.defaults import TileMatrixSets
 from owslib.wmts import WebMapTileService
+from rio_tiler.models import ImageData
+from starlette.datastructures import QueryParams
 
-from titiler.stacapi.factory import OGCEndpointsFactory
+from titiler.core.utils import tms_limits
+from titiler.stacapi.factory import OGCEndpointsFactory, get_layer_from_collections
 
 item_json = os.path.join(
     os.path.dirname(__file__), "fixtures", "46_033111301201_1040010082988200.json"
@@ -21,6 +26,50 @@ item_json = os.path.join(
 catalog_json = os.path.join(os.path.dirname(__file__), "fixtures", "catalog.json")
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
+
+
+@pytest.mark.parametrize(
+    "enabled, zoom, allowed",
+    [
+        (False, 3, True),
+        (True, 3, False),
+        (True, 10, False),
+        (True, 4, True),
+        (True, 9, True),
+    ],
+)
+def test_render_zoom_limits(enabled, zoom, allowed):
+    """Enforce advertised limits before backend access, including both boundaries."""
+    backend = MagicMock()
+    image = ImageData(numpy.zeros((1, 1, 1), dtype="uint8"))
+    backend.return_value.__enter__.return_value.tile.return_value = (image, [])
+    factory = OGCEndpointsFactory(backend=backend, block_outside_tms_zoom_range=enabled)
+    layer = {
+        "id": "example_overview",
+        "collection": "example",
+        "render": {"assets": ["data"]},
+        "tilematrix_limits": {
+            "WebMercatorQuad": tms_limits(
+                morecantile.tms.get("WebMercatorQuad"),
+                (-180, -85, 180, 85),
+                zooms=(4, 9),
+            ),
+        },
+    }
+    req = QueryParams(
+        tilematrixset="WebMercatorQuad", tilematrix=str(zoom), tilecol="0", tilerow="0"
+    )
+    api_params = {"url": "https://stac.example.test"}
+
+    if allowed:
+        assert factory.get_tile(req, layer, api_params) is image
+        backend.return_value.__enter__.return_value.tile.assert_called_once()
+    else:
+        with pytest.raises(HTTPException) as exc:
+            factory.get_tile(req, layer, api_params)
+        assert exc.value.status_code == 400
+        assert "Should be between 4 and 9" in exc.value.detail
+        backend.assert_not_called()
 
 
 def mock_rasterio_open(asset):
@@ -701,3 +750,59 @@ def test_custom_tms(client):
 
         layer = wmts["MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual"]
         assert "EPSG:3857" in layer.tilematrixsetlinks
+
+
+@patch("titiler.stacapi.factory.Client")
+def test_zoom_limits_multiple_tms(client):
+    """Enforce render zooms with multiple TMS, without advertising limits."""
+    with open(catalog_json, "r") as f:
+        collections = [
+            pystac.Collection.from_dict(c) for c in json.loads(f.read())["collections"]
+        ]
+        client.open.return_value.get_collections.return_value = collections
+
+    get_layer_from_collections.cache_clear()
+
+    app = FastAPI()
+    app.state.stac_url = "http://something.stac"
+    ogc_endpoints = OGCEndpointsFactory(
+        supported_tms=TileMatrixSets(
+            {
+                "WebMercatorQuad": morecantile.tms.get("WebMercatorQuad"),
+                "WorldCRS84Quad": morecantile.tms.get("WorldCRS84Quad"),
+            }
+        ),
+        block_outside_tms_zoom_range=True,
+    )
+    app.include_router(ogc_endpoints.router)
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/wmts",
+            params={
+                "service": "WMTS",
+                "version": "1.0.0",
+                "request": "getcapabilities",
+            },
+        )
+        assert response.status_code == 200
+        assert "TileMatrixSetLimits" not in response.text
+
+        response = client.get(
+            "/wmts",
+            params={
+                "service": "WMTS",
+                "version": "1.0.0",
+                "request": "gettile",
+                "layer": "MAXAR_BayofBengal_Cyclone_Mocha_May_23_visual",
+                "style": "default",
+                "format": "image/png",
+                "tilematrixset": "WebMercatorQuad",
+                "tilematrix": 7,  # render zooms are [8, 22]
+                "tilerow": 0,
+                "tilecol": 0,
+                "time": "2023-01-05",
+            },
+        )
+        assert response.status_code == 400
+        assert "Should be between 8 and 22" in response.json()["detail"]

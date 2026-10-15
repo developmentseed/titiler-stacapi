@@ -43,6 +43,17 @@ Example:
 - `https://myendpoint/wmts?Request=GetTiles&Services=wmts&Version=1.0.0&Style=default&Layer=MyLayer&TileMatrixSet=WebMercatorQuad&TileMatrix=0&TileRow=0&TileCol=0&Time=2023-01-01&Format=image/png&I=100&J=100&InfoFormat="application/geo+json`
 
 
+#### Tile matrix zoom limits
+
+Optional (disabled by default): set
+`TITILER_STACAPI_API_BLOCK_OUTSIDE_TMS_ZOOM_RANGE=true`, or pass
+`block_outside_tms_zoom_range=True` to `OGCEndpointsFactory`, to reject `/wmts`
+`GetTile` and `GetFeatureInfo` requests outside the layer's zoom limits with HTTP
+400. Limits come from the render's `tilematrixsets` entry (or the full
+TileMatrixSet range) and are enforced for every supported TileMatrixSet, though
+GetCapabilities only advertises them when a single one is configured. REST
+requests are unchanged.
+
 ### GetTile - REST
 
 `:endpoint:/layers/{LAYER}/{STYLE}/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{FORMAT}`
