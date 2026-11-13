@@ -169,7 +169,6 @@ class STACAPIBackend(BaseBackend):
         key=lambda self, collection_id: hashkey(
             collection_id,
             self.api_params["url"],
-            json.dumps(self.input),
             json.dumps(self.api_params.get("headers", {})),
         ),
         lock=Lock(),

@@ -1,9 +1,11 @@
 """Custom MosaicTiler Factory for TiTiler-STACAPI Mosaic Backend."""
 
 import datetime as python_datetime
+import hashlib
 import json
 import os
-from copy import copy
+import warnings
+from copy import copy, deepcopy
 from enum import Enum
 from threading import Lock
 from typing import Any, Callable, Dict, List, Literal, Optional, Type, cast
@@ -11,6 +13,7 @@ from urllib.parse import urlencode
 
 import jinja2
 import numpy
+import pystac
 import rasterio
 from attrs import define, field
 from cachetools import TTLCache, cached
@@ -134,21 +137,202 @@ def overlay_layers(image: list[ImageData]) -> ImageData:
     return first_image
 
 
-def _create_hashkey(api_params: APIParams, supported_tms: TileMatrixSets | None = None):
-    """Create a hashkey for caching."""
+def _collection_hashkey(
+    catalog: Client,
+    collection: pystac.Collection,
+    supported_tms: TileMatrixSets | None = None,
+):
+    """Create a hashkey for a single STAC Collection.
+
+    The key is derived from the Collection content itself (and not from the STAC API
+    credentials) so cached entries can be shared between users, while being
+    invalidated as soon as the Collection metadata changes.
+    """
+    collection_hash = hashlib.sha256(
+        json.dumps(
+            collection.to_dict(include_self_link=False, transform_hrefs=False),
+            sort_keys=True,
+            default=str,
+        ).encode()
+    ).hexdigest()
+
     return hashkey(
-        api_params["url"],
-        json.dumps(api_params.get("headers", {})),
+        collection.id,
+        collection_hash,
         ",".join(supported_tms.list()) if supported_tms else "",
     )
 
 
-@cached(ttl_cache, key=_create_hashkey, lock=Lock())  # type: ignore
-def get_layer_from_collections(  # noqa: C901
+@cached(ttl_cache, key=_collection_hashkey, lock=Lock())  # type: ignore
+def get_layers_from_collection(  # noqa: C901
+    catalog: Client,
+    collection: pystac.Collection,
+    supported_tms: TileMatrixSets | None = None,
+) -> dict[str, LayerDict]:
+    """Get Layers from one STAC Collection."""
+    layers: dict[str, Any] = {}
+    spatial_extent = collection.extent.spatial
+    temporal_extent = collection.extent.temporal
+
+    # NOTE: the renders are copied because they are updated in place below and
+    # the Collection should not be altered (its content is used as cache key).
+    renders = deepcopy(collection.extra_fields.get("renders", {}))
+
+    if renders:
+        for name, render in renders.items():
+            # Update Render parameters to be compatible with titiler v2.0.0+ and remove deprecated parameters
+            _adapt_render_for_v2(render)
+
+            render_tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
+                "tilematrixsets", {}
+            )
+            output_format = render.pop("format", None)
+            aggregation = render.pop("aggregation", None)
+            title = render.pop("title", None)
+
+            _ = render.pop("minmax_zoom", None)  # Not Used
+            _ = render.pop("title", None)  # Not Used
+
+            # see https://github.com/developmentseed/eoAPI-vito/issues/9#issuecomment-2034025021
+            render_id = f"{collection.id}_{name}"
+            layer = {
+                "id": render_id,
+                "collection": collection.id,
+                "title": title,
+                "bbox": (-180, -90, 180, 90),
+                "style": "default",
+                "render": render,
+            }
+            if output_format:
+                layer["format"] = output_format
+
+            if spatial_extent:
+                layer["bbox"] = tuple(spatial_extent.bboxes[0])
+
+            if supported_tms:
+                tilematrixsets: dict[str, tuple[int, int] | None] = dict.fromkeys(
+                    supported_tms.list()
+                )
+                for tms_id, zooms in tilematrixsets.items():
+                    if zooms := render_tilematrixsets.get(tms_id):
+                        tilematrixsets[tms_id] = zooms
+
+                layer["tilematrixsets"] = {}
+                for tms_id, zooms in tilematrixsets.items():
+                    try:
+                        limits = tms_limits(
+                            supported_tms.get(tms_id),
+                            layer["bbox"],
+                            zooms=zooms,
+                        )
+                        # NOTE: The WMTS spec is contradictory re. the multiplicity
+                        # relationships between Layer and TileMatrixSetLink, and
+                        # TileMatrixSetLink and tileMatrixSet (URI).
+                        # WMTS only support 1 set of limits for a TileMatrixSet
+                        layer["tilematrixsets"][tms_id] = (
+                            limits if len(tilematrixsets) == 1 else None
+                        )
+                    except Exception as e:  # noqa
+                        pass
+
+            if (
+                "cube:dimensions" in collection.extra_fields
+                and "time" in collection.extra_fields["cube:dimensions"]
+            ):
+                layer["time"] = [
+                    python_datetime.datetime.strptime(
+                        t,
+                        "%Y-%m-%dT%H:%M:%SZ",
+                    ).strftime("%Y-%m-%d")
+                    for t in collection.extra_fields["cube:dimensions"]["time"][
+                        "values"
+                    ]
+                ]
+            elif aggregation and aggregation["name"] == "datetime_frequency":
+                datetime_aggregation = catalog.get_aggregation(
+                    collection_id=collection.id,
+                    aggregation="datetime_frequency",
+                    aggregation_params=aggregation["params"],
+                )
+                layer["time"] = [
+                    python_datetime.datetime.strptime(
+                        t["key"],
+                        "%Y-%m-%dT%H:%M:%S.000Z",
+                    ).strftime("%Y-%m-%d")
+                    for t in datetime_aggregation
+                    if t["frequency"] > 0
+                ]
+            elif intervals := temporal_extent.intervals:
+                start_date = intervals[0][0]
+                end_date = (
+                    intervals[0][1]
+                    if intervals[0][1]
+                    else python_datetime.datetime.now(python_datetime.timezone.utc)
+                )
+
+                layer["time"] = [
+                    (start_date + python_datetime.timedelta(days=x)).strftime(
+                        "%Y-%m-%d"
+                    )
+                    for x in range(0, (end_date - start_date).days + 1)
+                ]
+
+            render = layer["render"] or {}
+
+            # special encoding for rescale
+            # Per Specification, the rescale entry is a 2d array in form of `[[min, max], [min,max]]`
+            # We need to convert this to `['{min},{max}', '{min},{max}']` for titiler dependency
+            if rescale := render.pop("rescale", None):
+                rescales = []
+                for r in rescale:
+                    if not isinstance(r, str):
+                        rescales.append(",".join(map(str, r)))
+                    else:
+                        rescales.append(r)
+
+                render["rescale"] = rescales
+
+            # special encoding for ColorMaps
+            # Per Specification, the colormap is a JSON object. TiTiler dependency expects a string encoded dict
+            if colormap := render.pop("colormap", None):
+                if not isinstance(colormap, str):
+                    colormap = json.dumps(colormap)
+
+                render["colormap"] = colormap
+
+            qs = urlencode(
+                [(k, v) for k, v in render.items() if v is not None],
+                doseq=True,
+            )
+            layer["query_string"] = str(qs)
+
+            layers[render_id] = {
+                "id": layer["id"],
+                "collection": layer["collection"],
+                "title": layer.get("title"),
+                "bbox": layer["bbox"],
+                "format": layer.get("format"),
+                "style": layer["style"],
+                "render": layer.get("render", {}),
+                "time": layer.get("time"),
+                "query_string": layer["query_string"],
+            }
+
+            if tilematrixset := layer.get("tilematrixsets"):
+                layers[render_id]["tilematrixsets"] = tilematrixset
+
+    return cast(dict[str, LayerDict], layers)
+
+
+def get_layer_from_collections(
     api_params: APIParams,
     supported_tms: TileMatrixSets | None = None,
 ) -> dict[str, LayerDict]:
-    """Get Layers from STAC Collections."""
+    """Get Layers from STAC Collections.
+
+    The list of Collections is fetched on each call, because it depends on the
+    credentials forwarded to the STAC API, but the Layers are cached per Collection.
+    """
     stac_api_io = StacApiIO(
         max_retries=Retry(
             total=retry_config.retry,
@@ -158,155 +342,25 @@ def get_layer_from_collections(  # noqa: C901
     )
     catalog = Client.open(api_params["url"], stac_io=stac_api_io)
 
-    layers = {}
+    layers: dict[str, LayerDict] = {}
     for collection in catalog.get_collections():
-        spatial_extent = collection.extent.spatial
-        temporal_extent = collection.extent.temporal
+        layers.update(get_layers_from_collection(catalog, collection, supported_tms))
 
-        if "renders" in collection.extra_fields:
-            for name, render in collection.extra_fields["renders"].items():
-                # Update Render parameters to be compatible with titiler v2.0.0+ and remove deprecated parameters
-                _adapt_render_for_v2(render)
+    return layers
 
-                render_tilematrixsets: dict[str, tuple[int, int] | None] = render.pop(
-                    "tilematrixsets", {}
-                )
-                output_format = render.pop("format", None)
-                aggregation = render.pop("aggregation", None)
-                title = render.pop("title", None)
 
-                _ = render.pop("minmax_zoom", None)  # Not Used
-                _ = render.pop("title", None)  # Not Used
+def _deprecated_cache_clear() -> None:
+    warnings.warn(
+        "`get_layer_from_collections.cache_clear()` is deprecated and will be removed "
+        "in a future version; use `get_layers_from_collection.cache_clear()` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    get_layers_from_collection.cache_clear()  # type: ignore
 
-                # see https://github.com/developmentseed/eoAPI-vito/issues/9#issuecomment-2034025021
-                render_id = f"{collection.id}_{name}"
-                layer = {
-                    "id": render_id,
-                    "collection": collection.id,
-                    "title": title,
-                    "bbox": (-180, -90, 180, 90),
-                    "style": "default",
-                    "render": render,
-                }
-                if output_format:
-                    layer["format"] = output_format
 
-                if spatial_extent:
-                    layer["bbox"] = tuple(spatial_extent.bboxes[0])
-
-                if supported_tms:
-                    tilematrixsets: dict[str, tuple[int, int] | None] = dict.fromkeys(
-                        supported_tms.list()
-                    )
-                    for tms_id, zooms in tilematrixsets.items():
-                        if zooms := render_tilematrixsets.get(tms_id):
-                            tilematrixsets[tms_id] = zooms
-
-                    layer["tilematrixsets"] = {}
-                    for tms_id, zooms in tilematrixsets.items():
-                        try:
-                            limits = tms_limits(
-                                supported_tms.get(tms_id),
-                                layer["bbox"],
-                                zooms=zooms,
-                            )
-                            # NOTE: The WMTS spec is contradictory re. the multiplicity
-                            # relationships between Layer and TileMatrixSetLink, and
-                            # TileMatrixSetLink and tileMatrixSet (URI).
-                            # WMTS only support 1 set of limits for a TileMatrixSet
-                            layer["tilematrixsets"][tms_id] = (
-                                limits if len(tilematrixsets) == 1 else None
-                            )
-                        except Exception as e:  # noqa
-                            pass
-
-                if (
-                    "cube:dimensions" in collection.extra_fields
-                    and "time" in collection.extra_fields["cube:dimensions"]
-                ):
-                    layer["time"] = [
-                        python_datetime.datetime.strptime(
-                            t,
-                            "%Y-%m-%dT%H:%M:%SZ",
-                        ).strftime("%Y-%m-%d")
-                        for t in collection.extra_fields["cube:dimensions"]["time"][
-                            "values"
-                        ]
-                    ]
-                elif aggregation and aggregation["name"] == "datetime_frequency":
-                    datetime_aggregation = catalog.get_aggregation(
-                        collection_id=collection.id,
-                        aggregation="datetime_frequency",
-                        aggregation_params=aggregation["params"],
-                    )
-                    layer["time"] = [
-                        python_datetime.datetime.strptime(
-                            t["key"],
-                            "%Y-%m-%dT%H:%M:%S.000Z",
-                        ).strftime("%Y-%m-%d")
-                        for t in datetime_aggregation
-                        if t["frequency"] > 0
-                    ]
-                elif intervals := temporal_extent.intervals:
-                    start_date = intervals[0][0]
-                    end_date = (
-                        intervals[0][1]
-                        if intervals[0][1]
-                        else python_datetime.datetime.now(python_datetime.timezone.utc)
-                    )
-
-                    layer["time"] = [
-                        (start_date + python_datetime.timedelta(days=x)).strftime(
-                            "%Y-%m-%d"
-                        )
-                        for x in range(0, (end_date - start_date).days + 1)
-                    ]
-
-                render = layer["render"] or {}
-
-                # special encoding for rescale
-                # Per Specification, the rescale entry is a 2d array in form of `[[min, max], [min,max]]`
-                # We need to convert this to `['{min},{max}', '{min},{max}']` for titiler dependency
-                if rescale := render.pop("rescale", None):
-                    rescales = []
-                    for r in rescale:
-                        if not isinstance(r, str):
-                            rescales.append(",".join(map(str, r)))
-                        else:
-                            rescales.append(r)
-
-                    render["rescale"] = rescales
-
-                # special encoding for ColorMaps
-                # Per Specification, the colormap is a JSON object. TiTiler dependency expects a string encoded dict
-                if colormap := render.pop("colormap", None):
-                    if not isinstance(colormap, str):
-                        colormap = json.dumps(colormap)
-
-                    render["colormap"] = colormap
-
-                qs = urlencode(
-                    [(k, v) for k, v in render.items() if v is not None],
-                    doseq=True,
-                )
-                layer["query_string"] = str(qs)
-
-                layers[render_id] = {
-                    "id": layer["id"],
-                    "collection": layer["collection"],
-                    "title": layer.get("title"),
-                    "bbox": layer["bbox"],
-                    "format": layer.get("format"),
-                    "style": layer["style"],
-                    "render": layer.get("render", {}),
-                    "time": layer.get("time"),
-                    "query_string": layer["query_string"],
-                }
-
-                if tilematrixset := layer.get("tilematrixsets"):
-                    layers[render_id]["tilematrixsets"] = tilematrixset
-
-    return cast(dict[str, LayerDict], layers)
+# `get_layer_from_collections` used to be cached itself, keep `cache_clear` available
+get_layer_from_collections.cache_clear = _deprecated_cache_clear  # type: ignore
 
 
 @define(kw_only=True)
