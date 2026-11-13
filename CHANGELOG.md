@@ -19,6 +19,9 @@
 
 ## [Unreleased]
 
+* cache WMTS/WMS layers **per STAC Collection** instead of caching the whole capabilities document. The cache key is derived from the Collection content, so entries are shared between users and invalidated as soon as a Collection changes. The list of Collections is now fetched on each request, which makes the cache usable with authenticated STAC APIs where the available Collections depend on the user
+* fix: remove the search parameters from the cache key used in `STACAPIBackend._get_collection` (the same Collection was fetched again for each distinct search)
+
 ## [2.1.0] - 2026-07-29
 
 * feat: update titiler-* requirements to >=2.2,<2.3
