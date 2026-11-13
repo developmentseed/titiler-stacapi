@@ -1,5 +1,13 @@
 # Release Notes
 
+## [2.2.0](https://github.com/developmentseed/titiler-stacapi/compare/2.1.2...2.2.0) (2026-11-13)
+
+
+### Features
+
+* support individual stac collection caching ([5383d5b](https://github.com/developmentseed/titiler-stacapi/commit/5383d5b33c12442f549bc150cec67b617afe7383))
+* support individual stac collection caching to improve capability responses with auth ([727e4a0](https://github.com/developmentseed/titiler-stacapi/commit/727e4a0bec5e0dd8da9ec67289540c6e61f7d3ac))
+
 ## [2.1.2](https://github.com/developmentseed/titiler-stacapi/compare/2.1.1...2.1.2) (2026-09-15)
 
 
