@@ -24,9 +24,9 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "orjson",
-    "titiler-core>=2.2,<2.3",
-    "titiler-mosaic>=2.2,<2.3",
-    "titiler-extensions>=2.2,<2.3",
+    "titiler-core>=2.2,<2.5",
+    "titiler-mosaic>=2.2,<2.5",
+    "titiler-extensions>=2.2,<2.5",
     "httpx2",
     "pystac-client",
     "pydantic>=2.4,<3.0",
