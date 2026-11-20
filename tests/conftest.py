@@ -24,6 +24,7 @@ def app(monkeypatch):
     monkeypatch.setenv("TITILER_STACAPI_STAC_API_URL", "http://something.stac")
     monkeypatch.setenv("TITILER_STACAPI_API_DEBUG", "TRUE")
     monkeypatch.setenv("TITILER_STACAPI_CACHE_DISABLE", "TRUE")
+    monkeypatch.setenv("TITILER_STACAPI_API_METRICS_ENABLED", "TRUE")
 
     from titiler.stacapi.main import app
 

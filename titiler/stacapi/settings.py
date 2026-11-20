@@ -16,6 +16,7 @@ class ApiSettings(BaseSettings):
     root_path: str = ""
     debug: bool = False
     template_directory: Optional[str] = None
+    metrics_enabled: bool = False
 
     model_config = {
         "env_prefix": "TITILER_STACAPI_API_",
