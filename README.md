@@ -81,6 +81,75 @@ It runs `titiler.stacapi` using Uvicorn web server.
 `titiler-stacapi` makes extensive use of the [**Render**](https://github.com/stac-extensions/render) extension, specifically at the `Collection` level.
 By using the render's metadata, the `/wmts` endpoint (from the `OGCEndpointsFactory` factory) can populate a set of `layers` returned by the `GetCapabilities` service.
 
+### Prometheus metrics
+
+Install the optional metrics extra and enable it:
+
+```bash
+python -m pip install "titiler.stacapi[metrics]"
+export TITILER_STACAPI_API_METRICS_ENABLED=TRUE
+```
+
+The published Docker image already ships the `metrics` extra; only the environment variable is needed.
+
+Once enabled, `/metrics` is available on startup and records:
+
+- `titiler_stacapi_http_requests_total{operation,method,status}`
+- `titiler_stacapi_http_request_duration_seconds{operation,method}`
+
+`operation` is a low-cardinality label derived from the route template (never from the
+requested URL, so collection IDs, item IDs and layer names do not end up in labels):
+
+| operation | routes |
+|---|---|
+| `landing`, `conformance` | `/`, `/conformance` |
+| `tiles` | `.../tiles`, `.../tiles/{tileMatrixSetId}/...` (collection and item) |
+| `point`, `bbox`, `feature`, `preview` | `.../point/...`, `.../bbox/...`, `.../feature...`, `.../preview...` |
+| `info`, `statistics`, `assets` | `.../info[.geojson]`, `.../[asset_]statistics`, `.../assets` (incl. collection `tiles/.../assets`, `point/.../assets`, `bbox/.../assets`) |
+| `tilejson`, `map` | `.../tilejson.json`, `.../map.html` |
+| `wmts`, `wms`, `layers` | `/wmts`, `.../WMTSCapabilities.xml`, `/wms`, `/layers/...` |
+| `tms`, `algorithms`, `colormaps` | `/tileMatrixSets...`, `/algorithms...`, `/colorMaps...` |
+| `other`, `unknown` | any other route / no matched route |
+
+`status` is grouped (`2xx`, `3xx`, `4xx`, `5xx`). `/healthz` and the scrape endpoint are
+excluded from request counters. Untemplated paths (for example bare 404s) are also ignored.
+
+With `TITILER_STACAPI_API_METRICS_ENABLED` left at its default (`FALSE`), `/metrics` is not
+registered even if the extra is installed.
+
+#### Multi-worker deployments
+
+For multi-worker deployments (for example `uvicorn --workers N`, or Gunicorn as used by the
+Docker image with `WEB_CONCURRENCY` > 1), set `PROMETHEUS_MULTIPROC_DIR` to an existing
+writable directory **before** the application is imported, and clear that directory before
+each server start.
+
+```bash
+export PROMETHEUS_MULTIPROC_DIR=/tmp/titiler-stacapi-prometheus
+mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
+rm -rf "$PROMETHEUS_MULTIPROC_DIR"/*
+```
+
+With Gunicorn, also mark workers dead on exit so stale metric files are cleaned up:
+
+```python
+from prometheus_client import multiprocess
+
+
+def child_exit(server, worker):
+    multiprocess.mark_process_dead(worker.pid)
+```
+
+#### Custom apps
+
+Custom apps can enable the same instrumentation:
+
+```python
+from titiler.stacapi.metrics import instrument_app
+
+instrument_app(app)  # or instrument_app(app, endpoint="/custom-metrics")
+```
+
 
 ## Contribution & Development
 

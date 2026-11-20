@@ -109,13 +109,18 @@ if settings.cors_origins:
 app.add_middleware(
     CacheControlMiddleware,
     cachecontrol=settings.cachecontrol,
-    exclude_path={r"/healthz"},
+    exclude_path={r"/healthz", r"/metrics"},
 )
 
 optional_headers = []
 if settings.debug:
     app.add_middleware(LoggerMiddleware)
     optional_headers = [OptionalHeader.server_timing, OptionalHeader.x_assets]
+
+if settings.metrics_enabled:
+    from titiler.stacapi.metrics import instrument_app
+
+    instrument_app(app)
 
 
 APP_CONFORMS_TO = {
