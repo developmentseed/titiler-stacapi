@@ -53,7 +53,7 @@ WORKDIR /tmp/app
 
 # Copy project metadata and dependencies
 COPY pyproject.toml uv.lock README.md LICENSE ./
-RUN uv sync --frozen --no-dev --extra server --no-editable  --no-install-project
+RUN uv sync --frozen --no-dev --extra server --extra metrics --no-editable  --no-install-project
 
 # Install runtime source code to the builder image
 COPY titiler/ ./titiler/
