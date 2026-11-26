@@ -1,5 +1,12 @@
 # Release Notes
 
+## [2.3.0](https://github.com/developmentseed/titiler-stacapi/compare/2.2.0...2.3.0) (2026-11-26)
+
+
+### Features
+
+* add metrics support. ([#141](https://github.com/developmentseed/titiler-stacapi/issues/141)) ([5f4ec1c](https://github.com/developmentseed/titiler-stacapi/commit/5f4ec1cf0ca04294a8c2b628dee4f33b63444fec))
+
 ## [2.2.0](https://github.com/developmentseed/titiler-stacapi/compare/2.1.2...2.2.0) (2026-11-17)
 
 * update titiler dependencies to `>=2.2,<2.5`
