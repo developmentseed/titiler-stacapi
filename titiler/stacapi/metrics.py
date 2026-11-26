@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING
+from weakref import WeakSet
 
 from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -11,6 +12,8 @@ from prometheus_fastapi_instrumentator.metrics import Info
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
+
+_INSTRUMENTED_APPS: WeakSet[FastAPI] = WeakSet()
 
 # Rules are matched, in order, against the route *template* (e.g.
 # `/collections/{collection_id}/items/{item_id}/tiles/...`), never against the
@@ -71,7 +74,7 @@ LATENCY = Histogram(
     "titiler_stacapi_http_request_duration_seconds",
     "HTTP request latency by operation.",
     labelnames=("operation", "method"),
-    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
+    buckets=(0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
 )
 
 
@@ -90,6 +93,9 @@ def record_service_metrics(info: Info) -> None:
 
 def instrument_app(app: FastAPI, endpoint: str = "/metrics") -> None:
     """Instrument a FastAPI app and expose Prometheus metrics."""
+    if app in _INSTRUMENTED_APPS:
+        return
+
     (
         Instrumentator(
             should_group_status_codes=True,
@@ -100,3 +106,5 @@ def instrument_app(app: FastAPI, endpoint: str = "/metrics") -> None:
         .instrument(app)
         .expose(app, endpoint=endpoint, include_in_schema=False)
     )
+
+    _INSTRUMENTED_APPS.add(app)

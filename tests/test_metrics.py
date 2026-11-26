@@ -291,6 +291,20 @@ def test_custom_metrics_endpoint_excluded():
         assert 'operation="other"' in body
 
 
+def test_instrument_app_is_idempotent():
+    """Calling instrument_app twice on the same app is a no-op."""
+    app = FastAPI()
+    instrument_app(app)
+    instrument_app(app)
+
+    metric_routes = [
+        getattr(route, "path", None)
+        for route in app.routes
+        if getattr(route, "path", None) == "/metrics"
+    ]
+    assert len(metric_routes) == 1
+
+
 def _run(
     script: str,
     tmp_path: Path,
@@ -333,6 +347,74 @@ def test_metrics_disabled_by_default(tmp_path: Path):
         cwd=tmp_path,  # avoid picking up a local .env
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_main_skips_metrics_when_disabled(tmp_path: Path):
+    """With metrics disabled, main imports without calling instrument_app."""
+    result = _run(
+        """
+        import sys
+        from types import ModuleType
+
+        fake = ModuleType("titiler.stacapi.metrics")
+
+        def instrument_app(app):
+            raise AssertionError("instrument_app should not run when disabled")
+
+        fake.instrument_app = instrument_app
+        sys.modules["titiler.stacapi.metrics"] = fake
+
+        import titiler.stacapi.main  # noqa: F401
+        """,
+        tmp_path,
+        env={
+            "TITILER_STACAPI_STAC_API_URL": "http://something.stac",
+            "TITILER_STACAPI_API_METRICS_ENABLED": "FALSE",
+        },
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_optional_metrics_import_error(tmp_path: Path):
+    """Missing prometheus packages raise ImportError from titiler.stacapi.metrics."""
+    result = _run(
+        """
+        import builtins
+        import sys
+
+        real_import = builtins.__import__
+
+        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name.startswith("prometheus_"):
+                raise ImportError(name)
+            return real_import(name, globals, locals, fromlist, level)
+
+        builtins.__import__ = fake_import
+        sys.modules.pop("titiler.stacapi.metrics", None)
+
+        try:
+            import titiler.stacapi.metrics  # noqa: F401
+        except ImportError:
+            raise SystemExit(0)
+        raise SystemExit(1)
+        """,
+        tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_instrument_app_errors_propagate(monkeypatch):
+    """Failures from Instrumentator construction propagate to the caller."""
+    import titiler.stacapi.metrics as metrics
+
+    app = FastAPI()
+
+    def boom(*args, **kwargs):
+        raise ValueError("PROMETHEUS_MULTIPROC_DIR is invalid")
+
+    monkeypatch.setattr(metrics, "Instrumentator", boom)
+    with pytest.raises(ValueError, match="PROMETHEUS_MULTIPROC_DIR"):
+        instrument_app(app)
 
 
 def test_multiprocess_metrics_exposition(tmp_path: Path):
